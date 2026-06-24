@@ -1,0 +1,1860 @@
+Projeto Garça Branca Gestão Rural
+Versão: 1.0 Status: Documento-base para desenvolvimento inicial Responsável pelo projeto: Gabriel Perin Usuários previstos: 3 usuários principais — Gabriel, pai e mãe Interface principal desejada: WhatsApp Banco de dados principal: Postgres via Supabase Objetivo: construir um sistema próprio, econômico, seguro e personalizado para gestão da fazenda, gado, funcionários, financeiro, estoque, documentos, manejo, cascalheira e supressão.
+
+1. Visão geral do projeto
+O projeto Garça Branca Gestão Rural será um sistema familiar de gestão rural criado especificamente para a rotina da fazenda dos pais de Gabriel.
+A fazenda/sede principal é conhecida como Garça Branca, localizada na região de Extrema/RO, aproximadamente no km 1010. A operação envolve criação e venda de gado para frigorífico, controle de lotes, pastos, funcionários, compras, despesas, documentos, manejo, cascalheira, supressão e serviços de campo.
+O sistema deve funcionar principalmente pelo WhatsApp, para que os usuários não precisem aprender a usar um app complexo. A ideia é que os usuários mandem mensagens, áudios ou fotos, e o sistema transforme essas informações em registros organizados.
+Exemplo:
+Usuário envia no WhatsApp:
+Comprei 10 sacos de sal por 1.800 no Pix.
+O sistema interpreta, pede confirmação e salva como:
+	•	despesa;
+	•	entrada de estoque;
+	•	item: sal mineral;
+	•	quantidade: 10 sacos;
+	•	valor: R$ 1.800;
+	•	forma de pagamento: Pix;
+	•	data;
+	•	usuário responsável;
+	•	anexo, se houver.
+O sistema também deve permitir consultas pelo WhatsApp, como:
+	•	“Quanto gastamos esse mês?”
+	•	“Quantas cabeças temos hoje?”
+	•	“Quanto gastamos com sal?”
+	•	“Quanto João recebeu de adiantamento?”
+	•	“Qual venda ainda não foi recebida?”
+	•	“Tem tarefa pendente?”
+	•	“Tem conta vencendo?”
+	•	“Quando foi a última pesagem?”
+	•	“Quanto cascalho já foi retirado?”
+	•	“Tem licença ou autorização vencendo?”
+
+2. Objetivo principal
+Criar um sistema que transforme a rotina rural em dados confiáveis.
+Atualmente, muitas informações podem estar espalhadas entre:
+	•	memória;
+	•	caderno;
+	•	conversas de WhatsApp;
+	•	fotos soltas;
+	•	comprovantes;
+	•	recibos;
+	•	notas;
+	•	áudios;
+	•	mensagens de funcionários;
+	•	documentos físicos;
+	•	informações lembradas por pai/mãe.
+O sistema deve centralizar tudo em uma base organizada e segura.
+Objetivo final:
+Tudo que acontece na fazenda deve virar registro: gado, dinheiro, funcionário, estoque, venda, pasto, documento, manejo, cascalheira, supressão e tarefa.
+
+3. Princípios do sistema
+3.1 Simplicidade para os usuários
+Os usuários principais não devem precisar abrir um sistema complicado.
+A experiência ideal é:
+	•	Usuário manda mensagem, áudio ou foto no WhatsApp.
+	•	Sistema entende.
+	•	Sistema pede confirmação quando necessário.
+	•	Sistema salva no banco de dados.
+	•	Usuário consulta pelo WhatsApp quando quiser.
+O WhatsApp será a interface principal.
+3.2 Segurança dos dados
+Os dados da fazenda são importantes. O sistema não pode depender apenas de planilha.
+A planilha pode ser usada para:
+	•	exportação;
+	•	backup adicional;
+	•	conferência;
+	•	envio ao contador;
+	•	relatório externo.
+Mas a base principal deve ser um banco de dados confiável.
+Banco principal recomendado:
+Supabase/Postgres
+3.3 IA não é a fonte da verdade
+A IA deve apenas interpretar mensagens, áudios e fotos.
+A verdade do sistema é o banco de dados.
+A IA não deve inventar dados nem responder consultas “de memória”. Para responder perguntas, ela deve consultar os registros salvos.
+3.4 Confirmação antes de ações críticas
+Ações importantes não devem ser salvas automaticamente sem confirmação.
+Ações críticas:
+	•	venda de gado;
+	•	morte de animal;
+	•	nascimento;
+	•	alteração na quantidade de cabeças;
+	•	movimentação de lote;
+	•	pagamento de funcionário;
+	•	adiantamento;
+	•	baixa de estoque;
+	•	registro de supressão;
+	•	retirada de cascalho;
+	•	documento ambiental;
+	•	alteração de venda;
+	•	exclusão/cancelamento de registro.
+Sempre que a IA interpretar uma ação crítica, o sistema deve responder:
+Entendi isso: […]. Confirmar?
+Somente após confirmação o registro deve ser oficialmente salvo.
+3.5 Nada deve ser apagado definitivamente
+Registros importantes nunca devem ser deletados de forma permanente.
+Se houver erro, o registro deve ser:
+	•	cancelado;
+	•	corrigido;
+	•	substituído;
+	•	marcado como duplicado;
+	•	arquivado.
+O histórico deve permanecer.
+3.6 Tudo deve ter autoria e data
+Todo registro precisa guardar:
+	•	quem criou;
+	•	quando criou;
+	•	origem do registro: WhatsApp, painel, importação etc.;
+	•	mensagem original;
+	•	anexo original, se houver;
+	•	quem confirmou;
+	•	quando confirmou;
+	•	alterações posteriores.
+
+4. Escopo inicial do sistema
+A primeira versão não deve tentar fazer tudo de uma vez.
+O sistema deve ser construído em fases.
+Fase 1 — Fundação
+Objetivo: criar banco de dados, painel simples e registros manuais.
+Incluir:
+	•	usuários;
+	•	fazendas;
+	•	pastos;
+	•	lotes de gado;
+	•	funcionários;
+	•	despesas;
+	•	receitas;
+	•	vendas;
+	•	estoque;
+	•	tarefas;
+	•	documentos;
+	•	auditoria.
+Não implementar WhatsApp ainda.
+Fase 2 — IA de texto
+Objetivo: interpretar mensagens escritas em português.
+Exemplos:
+	•	“João recebeu 300 de adiantamento”
+	•	“Comprei 10 sacos de sal por 1.800”
+	•	“Nasceram 3 bezerros no pasto 4”
+	•	“Vendi 18 bois para o frigorífico”
+	•	“Tiramos 4 cargas de cascalho”
+	•	“Cerca do pasto 3 caiu”
+A IA deve transformar a frase em JSON estruturado.
+Fase 3 — WhatsApp com texto
+Objetivo: conectar WhatsApp Cloud API.
+Fluxo:
+	•	WhatsApp recebe mensagem.
+	•	Webhook recebe a mensagem.
+	•	Sistema salva mensagem bruta.
+	•	IA interpreta.
+	•	Sistema cria ação pendente.
+	•	Usuário confirma.
+	•	Sistema salva.
+	•	Bot responde.
+Fase 4 — Áudio
+Objetivo: receber áudio pelo WhatsApp.
+Fluxo:
+	•	Usuário envia áudio.
+	•	Sistema baixa o áudio.
+	•	Sistema salva o arquivo.
+	•	IA transcreve.
+	•	IA interpreta.
+	•	Sistema pede confirmação.
+	•	Sistema salva.
+Fase 5 — Foto de nota e comprovante
+Objetivo: receber imagem pelo WhatsApp.
+Fluxo:
+	•	Usuário envia foto.
+	•	Sistema salva imagem.
+	•	IA tenta extrair dados.
+	•	Sistema identifica valor, data, fornecedor, item e tipo.
+	•	Sistema pergunta se deve registrar.
+	•	Usuário confirma.
+	•	Sistema salva e anexa a imagem ao registro.
+Fase 6 — Consultas pelo WhatsApp
+Objetivo: responder perguntas com base no banco de dados.
+Exemplos:
+	•	“Quanto gastamos esse mês?”
+	•	“Quanto gastamos com sal?”
+	•	“Quantas cabeças temos?”
+	•	“Qual lote está no pasto 3?”
+	•	“Quanto João recebeu esse mês?”
+	•	“Quais vendas estão pendentes?”
+	•	“Tem conta vencendo?”
+	•	“Tem tarefa atrasada?”
+	•	“Quanto cascalho já tiramos?”
+Fase 7 — Alertas automáticos
+Objetivo: o sistema avisar coisas importantes.
+Alertas:
+	•	conta perto de vencer;
+	•	venda ainda não recebida;
+	•	funcionário para pagar;
+	•	adiantamento pendente;
+	•	estoque baixo;
+	•	tarefa atrasada;
+	•	pesagem atrasada;
+	•	manejo pendente;
+	•	documento/licença vencendo;
+	•	comprovante faltando;
+	•	autorização de supressão vencendo;
+	•	retirada de cascalho sem documento anexado.
+Fase 8 — Painel melhorado
+Objetivo: painel web para Gabriel revisar, corrigir e administrar.
+Funções:
+	•	ver registros;
+	•	filtrar por módulo;
+	•	corrigir lançamentos;
+	•	cancelar registros;
+	•	ver anexos;
+	•	exportar planilhas;
+	•	ver alertas;
+	•	cadastrar dados estruturais;
+	•	revisar ações pendentes.
+
+5. Stack técnica escolhida
+5.1 Desenvolvimento
+Ferramenta principal:
+	•	Google Antigravity
+Função:
+	•	programar com IA;
+	•	editar código;
+	•	rodar terminal;
+	•	revisar arquivos;
+	•	gerar componentes;
+	•	criar migrations;
+	•	criar funções;
+	•	testar o sistema.
+5.2 Frontend / painel
+Tecnologias:
+	•	Next.js;
+	•	TypeScript;
+	•	Tailwind CSS;
+	•	React;
+	•	componentes simples e responsivos.
+Objetivo:
+	•	painel administrativo simples;
+	•	não precisa ser app nativo;
+	•	pode funcionar como PWA no futuro.
+5.3 Backend
+Inicialmente:
+	•	Supabase Edge Functions;
+Alternativa futura:
+	•	Cloudflare Workers;
+	•	API Node.js separada.
+Objetivo do backend:
+	•	receber webhooks do WhatsApp;
+	•	processar mensagens;
+	•	chamar IA;
+	•	salvar no banco;
+	•	buscar dados;
+	•	enviar respostas;
+	•	rodar alertas.
+5.4 Banco de dados
+Principal:
+	•	Supabase/Postgres
+Motivo:
+	•	banco relacional confiável;
+	•	suporta tabelas complexas;
+	•	permite auditoria;
+	•	permite Row Level Security;
+	•	integra autenticação;
+	•	integra storage;
+	•	permite APIs automáticas;
+	•	tem plano gratuito para testes;
+	•	pode migrar para plano pago para uso real.
+5.5 Storage
+Para guardar:
+	•	fotos de notas;
+	•	comprovantes Pix;
+	•	recibos;
+	•	documentos;
+	•	imagens de campo;
+	•	fotos de pasto;
+	•	fotos de cascalheira;
+	•	fotos de supressão;
+	•	áudios originais.
+Arquivos não devem ser salvos diretamente como blobs no banco principal.
+O banco deve guardar:
+	•	link do arquivo;
+	•	tipo;
+	•	tamanho;
+	•	usuário;
+	•	data;
+	•	módulo relacionado;
+	•	registro relacionado.
+5.6 WhatsApp
+Usar:
+	•	WhatsApp Cloud API oficial da Meta.
+Funções:
+	•	receber texto;
+	•	receber áudio;
+	•	receber imagem;
+	•	enviar mensagens;
+	•	enviar alertas;
+	•	pedir confirmação;
+	•	responder consultas.
+5.7 IA
+Usar uma camada abstrata chamada AIProvider.
+Inicialmente pode ser:
+	•	OpenAI API;
+	•	Gemini API.
+O código deve ser preparado para trocar o provedor depois sem reescrever o sistema inteiro.
+A IA será usada para:
+	•	interpretar texto;
+	•	transcrever áudio;
+	•	ler imagem;
+	•	classificar mensagens;
+	•	extrair campos;
+	•	sugerir ação;
+	•	responder em linguagem natural com base em dados consultados.
+A IA não deve fazer alterações diretas no banco sem passar pela camada de validação.
+
+6. Usuários e permissões
+Usuários iniciais:
+	•	Gabriel
+	•	Pai
+	•	Mãe
+Papéis
+Administrador
+Provavelmente Gabriel.
+Permissões:
+	•	configurar sistema;
+	•	criar/editar fazendas;
+	•	criar/editar pastos;
+	•	criar/editar usuários;
+	•	revisar ações pendentes;
+	•	cancelar registros;
+	•	exportar dados;
+	•	configurar alertas;
+	•	ver todos os módulos.
+Gestor
+Pai e mãe.
+Permissões:
+	•	registrar informações pelo WhatsApp;
+	•	consultar dados;
+	•	confirmar ações;
+	•	lançar despesas;
+	•	lançar vendas;
+	•	lançar pagamentos;
+	•	lançar movimentações;
+	•	ver relatórios;
+	•	anexar documentos.
+Funcionário
+Não será usado no início, mas o sistema deve nascer preparado.
+Permissões futuras:
+	•	enviar áudio/foto;
+	•	registrar tarefa;
+	•	registrar ocorrência;
+	•	registrar compra;
+	•	não pode confirmar venda;
+	•	não pode alterar gado;
+	•	não pode apagar dados;
+	•	não pode ver financeiro completo.
+
+7. Módulos do sistema
+7.1 Módulo de Fazendas e Áreas
+Controla:
+	•	fazendas;
+	•	sedes;
+	•	retiros;
+	•	áreas;
+	•	pastos;
+	•	curral;
+	•	áreas de plantio;
+	•	áreas em regularização;
+	•	áreas que não podem abrir;
+	•	cascalheiras;
+	•	áreas de supressão;
+	•	estradas internas;
+	•	cercas;
+	•	bebedouros;
+	•	cochos.
+Campos principais:
+	•	nome;
+	•	tipo;
+	•	localização;
+	•	observações;
+	•	tamanho aproximado;
+	•	status;
+	•	fotos;
+	•	documentos vinculados.
+Exemplos:
+	•	Garça Branca;
+	•	Pasto 1;
+	•	Pasto 2;
+	•	Cascalheira da entrada;
+	•	Área em regularização;
+	•	Área de plantio de terceiros.
+
+7.2 Módulo de Pastos
+Controla:
+	•	nome do pasto;
+	•	fazenda relacionada;
+	•	capacidade estimada;
+	•	condição atual;
+	•	lote atual;
+	•	descanso;
+	•	data de entrada do lote;
+	•	data de saída do lote;
+	•	observações;
+	•	problemas de cerca;
+	•	problemas de água;
+	•	problemas de cocho.
+Perguntas que o sistema deve responder:
+	•	“Qual lote está no pasto 3?”
+	•	“Quantas cabeças tem no pasto 2?”
+	•	“Qual pasto está descansando?”
+	•	“Qual pasto está com cerca pendente?”
+	•	“Quando o lote entrou no pasto 4?”
+
+7.3 Módulo de Gado e Lotes
+Controle inicial será por lote, não por animal individual.
+Isso é importante porque a fazenda usa controle por marca/lote e não necessariamente por brinco individual.
+Campos:
+	•	nome do lote;
+	•	categoria;
+	•	quantidade de cabeças;
+	•	dono;
+	•	fazenda;
+	•	pasto;
+	•	data de criação;
+	•	origem;
+	•	observações;
+	•	status.
+Categorias possíveis:
+	•	vacas;
+	•	bezerros;
+	•	garrotes;
+	•	bois;
+	•	novilhas;
+	•	matrizes;
+	•	touros;
+	•	descarte;
+	•	lote misto.
+Deve permitir separar:
+	•	gado dos pais;
+	•	gado do Gabriel;
+	•	gado de terceiros, se houver.
+Eventos do lote:
+	•	nascimento;
+	•	morte;
+	•	compra;
+	•	venda;
+	•	transferência;
+	•	apartação;
+	•	pesagem;
+	•	tratamento;
+	•	observação sanitária.
+
+7.4 Módulo de Movimentações de Gado
+Registra tudo que altera o rebanho.
+Tipos:
+	•	entrada por compra;
+	•	nascimento;
+	•	saída por venda;
+	•	morte;
+	•	transferência entre pastos;
+	•	transferência entre fazendas;
+	•	apartação;
+	•	ajuste manual;
+	•	descarte;
+	•	desaparecimento/perda.
+Toda movimentação deve guardar:
+	•	data;
+	•	lote;
+	•	quantidade;
+	•	origem;
+	•	destino;
+	•	motivo;
+	•	usuário responsável;
+	•	observação;
+	•	confirmação;
+	•	anexo, se houver.
+Ações críticas exigem confirmação.
+Exemplo WhatsApp:
+Passei 20 garrotes do pasto 2 para o pasto 5.
+Resposta esperada:
+Entendi: movimentar 20 garrotes do Pasto 2 para o Pasto 5. Confirmar?
+
+7.5 Módulo de Pesagens
+Controla:
+	•	data;
+	•	lote;
+	•	quantidade pesada;
+	•	peso individual, se houver;
+	•	peso médio;
+	•	peso total;
+	•	observações;
+	•	responsável;
+	•	anexo;
+	•	comparação com pesagem anterior.
+Perguntas:
+	•	“Qual foi a última pesagem?”
+	•	“Qual lote está mais pesado?”
+	•	“Qual lote está pronto para venda?”
+	•	“Qual foi a média da última pesagem?”
+	•	“Há quanto tempo esse lote não pesa?”
+
+7.6 Módulo de Vendas de Gado
+Controla:
+	•	comprador/frigorífico;
+	•	data da negociação;
+	•	data do embarque;
+	•	quantidade de cabeças;
+	•	lote vendido;
+	•	peso médio;
+	•	peso total;
+	•	preço;
+	•	valor bruto;
+	•	descontos;
+	•	frete;
+	•	comissão;
+	•	valor líquido;
+	•	forma de pagamento;
+	•	data prevista de recebimento;
+	•	status do pagamento;
+	•	comprovante;
+	•	documentos;
+	•	observações.
+Status possíveis:
+	•	negociada;
+	•	embarque agendado;
+	•	embarcada;
+	•	aguardando acerto;
+	•	aguardando pagamento;
+	•	recebida;
+	•	cancelada.
+Perguntas:
+	•	“Qual venda ainda não recebeu?”
+	•	“Quanto vendemos esse mês?”
+	•	“Quantas cabeças foram vendidas?”
+	•	“Qual foi a última venda?”
+	•	“Tem venda com pagamento atrasado?”
+Alerta:
+A venda para o frigorífico X do dia 12 ainda não foi marcada como recebida.
+
+7.7 Módulo Financeiro
+Controla:
+	•	despesas;
+	•	receitas;
+	•	contas a pagar;
+	•	contas a receber;
+	•	categorias;
+	•	formas de pagamento;
+	•	comprovantes;
+	•	recorrências;
+	•	status de pagamento.
+Categorias iniciais:
+	•	sal mineral;
+	•	ração;
+	•	suplemento;
+	•	medicamento;
+	•	vacina;
+	•	combustível;
+	•	funcionário;
+	•	frete;
+	•	manutenção;
+	•	cerca;
+	•	curral;
+	•	estrada;
+	•	peças;
+	•	máquinas;
+	•	contador;
+	•	impostos/taxas;
+	•	documentos;
+	•	cascalheira;
+	•	supressão;
+	•	manejo;
+	•	venda de gado;
+	•	compra de gado;
+	•	despesas da sede;
+	•	outros.
+Perguntas:
+	•	“Quanto gastamos esse mês?”
+	•	“Quanto gastamos com funcionário?”
+	•	“Quanto gastamos com sal?”
+	•	“Quanto gastamos com combustível?”
+	•	“Quanto entrou de venda?”
+	•	“Quanto tem a receber?”
+	•	“Tem conta vencendo?”
+	•	“Qual foi a maior despesa do mês?”
+
+7.8 Módulo de Funcionários
+Controla:
+	•	nome;
+	•	função;
+	•	salário;
+	•	forma de pagamento;
+	•	data de pagamento;
+	•	adiantamentos;
+	•	diárias;
+	•	tarefas;
+	•	ocorrências;
+	•	compras feitas pelo funcionário;
+	•	prestação de contas;
+	•	observações;
+	•	documentos.
+Eventos:
+	•	pagamento;
+	•	adiantamento;
+	•	tarefa atribuída;
+	•	tarefa concluída;
+	•	ocorrência;
+	•	compra realizada;
+	•	falta/ausência, se necessário.
+Perguntas:
+	•	“Quanto João recebeu esse mês?”
+	•	“Quem recebeu adiantamento?”
+	•	“Qual funcionário tem tarefa pendente?”
+	•	“Quanto gastamos com funcionário?”
+	•	“Qual foi o último pagamento do João?”
+Ações críticas exigem confirmação.
+
+7.9 Módulo de Estoque
+Controla:
+	•	sal mineral;
+	•	ração;
+	•	suplemento;
+	•	vacina;
+	•	medicamento;
+	•	combustível;
+	•	arame;
+	•	mourão;
+	•	ferramentas;
+	•	peças;
+	•	materiais de cerca;
+	•	materiais de curral;
+	•	outros insumos.
+Cada item deve ter:
+	•	nome;
+	•	categoria;
+	•	unidade;
+	•	quantidade atual;
+	•	estoque mínimo;
+	•	localização;
+	•	última entrada;
+	•	última saída;
+	•	observações.
+Movimentos:
+	•	entrada;
+	•	saída;
+	•	ajuste;
+	•	perda;
+	•	uso em tarefa;
+	•	compra vinculada;
+	•	baixa vinculada.
+Perguntas:
+	•	“Quanto sal tem?”
+	•	“Quando foi a última compra de sal?”
+	•	“O estoque de remédio está baixo?”
+	•	“Quanto gastamos com ração?”
+	•	“Quais itens estão abaixo do mínimo?”
+Alertas:
+Estoque de sal mineral está baixo.
+
+7.10 Módulo de Tarefas
+Controla tarefas da fazenda.
+Tipos:
+	•	consertar cerca;
+	•	verificar pasto;
+	•	comprar insumo;
+	•	pagar funcionário;
+	•	verificar estoque;
+	•	pesar gado;
+	•	vacinar;
+	•	vermifugar;
+	•	manutenção de estrada;
+	•	manutenção de curral;
+	•	serviço de cascalheira;
+	•	serviço de supressão;
+	•	documentação.
+Campos:
+	•	título;
+	•	descrição;
+	•	responsável;
+	•	prazo;
+	•	prioridade;
+	•	status;
+	•	módulo relacionado;
+	•	fotos;
+	•	conclusão;
+	•	observações.
+Status:
+	•	aberta;
+	•	em andamento;
+	•	aguardando;
+	•	concluída;
+	•	cancelada;
+	•	atrasada.
+Perguntas:
+	•	“O que tem pendente?”
+	•	“Quais tarefas são para essa semana?”
+	•	“Tem tarefa atrasada?”
+	•	“O que João precisa fazer?”
+	•	“Quais cercas estão para arrumar?”
+
+7.11 Módulo de Documentos e Anexos
+Controla:
+	•	notas fiscais;
+	•	recibos;
+	•	comprovantes Pix;
+	•	contratos;
+	•	documentos de terra;
+	•	documentos ambientais;
+	•	documentos de funcionários;
+	•	fotos de campo;
+	•	fotos de pasto;
+	•	fotos de cascalheira;
+	•	fotos de supressão;
+	•	documentos de venda de gado;
+	•	GTA, se aplicável;
+	•	romaneios;
+	•	laudos;
+	•	autorizações.
+Cada documento deve ter:
+	•	tipo;
+	•	data;
+	•	descrição;
+	•	módulo relacionado;
+	•	registro relacionado;
+	•	arquivo;
+	•	usuário que enviou;
+	•	observação;
+	•	status de revisão.
+
+7.12 Módulo de Manejo
+Controla:
+	•	rotação de pasto;
+	•	entrada e saída de lote;
+	•	descanso de pasto;
+	•	sal mineral;
+	•	vacinação;
+	•	vermifugação;
+	•	apartação;
+	•	pesagem;
+	•	lote pronto para venda;
+	•	animal/lote doente;
+	•	morte;
+	•	nascimento;
+	•	manejo sanitário.
+Perguntas:
+	•	“Quando foi a última vermifugação?”
+	•	“Qual pasto precisa descansar?”
+	•	“Qual lote precisa pesar?”
+	•	“Tem manejo pendente?”
+	•	“Qual lote está pronto para vender?”
+
+7.13 Módulo de Cascalheira
+Controla uso e movimentação de cascalho.
+Campos:
+	•	nome da cascalheira;
+	•	localização;
+	•	coordenadas, se houver;
+	•	área vinculada;
+	•	documento/autorização, se houver;
+	•	volume/cargas autorizadas, se houver;
+	•	volume/cargas retiradas;
+	•	destino do cascalho;
+	•	finalidade;
+	•	data;
+	•	responsável;
+	•	máquinas;
+	•	caminhões;
+	•	fotos antes;
+	•	fotos durante;
+	•	fotos depois;
+	•	observações;
+	•	recuperação da área.
+Eventos:
+	•	retirada de cascalho;
+	•	uso em estrada;
+	•	uso em curral;
+	•	uso em sede;
+	•	manutenção;
+	•	recuperação;
+	•	vistoria.
+Exemplo WhatsApp:
+Tiramos 4 cargas de cascalho da entrada e colocamos na estrada do pasto 3.
+Resposta:
+Entendi: retirada de 4 cargas de cascalho da cascalheira da entrada, usadas na estrada do Pasto 3. Confirmar?
+
+7.14 Módulo de Supressão e Ambiental
+Este módulo deve ser tratado com cuidado.
+O sistema não substitui engenheiro, técnico, contador, advogado, órgão ambiental ou responsável legal. Ele apenas organiza registros, documentos, prazos e evidências.
+Controla:
+	•	área de supressão;
+	•	autorização;
+	•	número do processo;
+	•	validade;
+	•	responsável técnico;
+	•	fazenda/área;
+	•	coordenadas;
+	•	tamanho aproximado;
+	•	fotos antes;
+	•	fotos durante;
+	•	fotos depois;
+	•	madeira, se houver;
+	•	destino do material;
+	•	pendências;
+	•	vencimentos;
+	•	observações;
+	•	restrições;
+	•	áreas que não podem mexer;
+	•	APP/Reserva Legal, se informado pelos responsáveis.
+Alertas:
+	•	autorização perto de vencer;
+	•	documento faltando;
+	•	foto antes/depois faltando;
+	•	prazo de regularização;
+	•	tarefa ambiental pendente.
+Exemplo WhatsApp:
+Começamos a limpar a área nova.
+Resposta:
+Essa limpeza é supressão autorizada? Informe a área, documento/autorização ou se deseja registrar apenas como observação pendente.
+
+7.15 Módulo de Máquinas, Veículos e Manutenção
+Controla:
+	•	tratores;
+	•	caminhonetes;
+	•	motos;
+	•	roçadeiras;
+	•	bombas;
+	•	implementos;
+	•	combustível;
+	•	troca de óleo;
+	•	peças;
+	•	manutenção;
+	•	serviço contratado;
+	•	horas de máquina, se houver.
+Perguntas:
+	•	“Quanto gastamos com manutenção?”
+	•	“Quando foi a última manutenção do trator?”
+	•	“Quanto combustível foi usado?”
+	•	“Qual máquina está com problema?”
+
+8. Banco de dados — tabelas iniciais
+O banco deve usar UUID como chave primária.
+Todas as tabelas críticas devem ter:
+	•	id;
+	•	created_at;
+	•	updated_at;
+	•	created_by;
+	•	updated_by;
+	•	status;
+	•	deleted_at;
+	•	deleted_by;
+	•	notes.
+Tabelas principais
+users_profiles
+Guarda dados dos usuários do sistema.
+Campos:
+	•	id;
+	•	user_id;
+	•	full_name;
+	•	phone_number;
+	•	role;
+	•	is_active;
+	•	created_at;
+	•	updated_at.
+farms
+Fazendas/áreas principais.
+Campos:
+	•	id;
+	•	name;
+	•	location_description;
+	•	notes;
+	•	status;
+	•	created_by;
+	•	created_at;
+	•	updated_at.
+areas
+Áreas específicas dentro de fazendas.
+Campos:
+	•	id;
+	•	farm_id;
+	•	name;
+	•	type;
+	•	approximate_size;
+	•	location_description;
+	•	notes;
+	•	status;
+	•	created_by;
+	•	created_at;
+	•	updated_at.
+Tipos possíveis:
+	•	sede;
+	•	pasto;
+	•	curral;
+	•	cascalheira;
+	•	área de plantio;
+	•	área em regularização;
+	•	área restrita;
+	•	estrada;
+	•	reserva;
+	•	outro.
+pastures
+Pastos.
+Campos:
+	•	id;
+	•	farm_id;
+	•	area_id;
+	•	name;
+	•	approximate_capacity;
+	•	current_condition;
+	•	rest_status;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+cattle_lots
+Lotes de gado.
+Campos:
+	•	id;
+	•	name;
+	•	owner;
+	•	category;
+	•	current_quantity;
+	•	farm_id;
+	•	pasture_id;
+	•	origin;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+cattle_movements
+Movimentações do gado.
+Campos:
+	•	id;
+	•	cattle_lot_id;
+	•	movement_type;
+	•	quantity;
+	•	from_farm_id;
+	•	from_pasture_id;
+	•	to_farm_id;
+	•	to_pasture_id;
+	•	movement_date;
+	•	reason;
+	•	requires_confirmation;
+	•	confirmed_by;
+	•	confirmed_at;
+	•	source_message_id;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+Tipos:
+	•	nascimento;
+	•	morte;
+	•	compra;
+	•	venda;
+	•	transferência;
+	•	apartação;
+	•	ajuste;
+	•	descarte;
+	•	outro.
+weighings
+Pesagens.
+Campos:
+	•	id;
+	•	cattle_lot_id;
+	•	weighing_date;
+	•	quantity_weighed;
+	•	average_weight;
+	•	total_weight;
+	•	individual_weights_json;
+	•	notes;
+	•	source_message_id;
+	•	created_at;
+	•	updated_at.
+cattle_sales
+Vendas de gado.
+Campos:
+	•	id;
+	•	buyer_name;
+	•	cattle_lot_id;
+	•	quantity;
+	•	negotiation_date;
+	•	shipment_date;
+	•	average_weight;
+	•	total_weight;
+	•	price_type;
+	•	price_value;
+	•	gross_amount;
+	•	discounts_amount;
+	•	freight_amount;
+	•	commission_amount;
+	•	net_amount;
+	•	expected_payment_date;
+	•	payment_status;
+	•	payment_received_at;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+employees
+Funcionários.
+Campos:
+	•	id;
+	•	full_name;
+	•	role_description;
+	•	salary_amount;
+	•	payment_day;
+	•	phone_number;
+	•	lives_on_farm;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+employee_payments
+Pagamentos e adiantamentos.
+Campos:
+	•	id;
+	•	employee_id;
+	•	payment_type;
+	•	amount;
+	•	payment_date;
+	•	due_date;
+	•	payment_method;
+	•	description;
+	•	requires_confirmation;
+	•	confirmed_by;
+	•	confirmed_at;
+	•	source_message_id;
+	•	status;
+	•	created_at;
+	•	updated_at.
+Tipos:
+	•	salário;
+	•	adiantamento;
+	•	diária;
+	•	bônus;
+	•	reembolso;
+	•	outro.
+expenses
+Despesas.
+Campos:
+	•	id;
+	•	category;
+	•	subcategory;
+	•	description;
+	•	amount;
+	•	expense_date;
+	•	payment_method;
+	•	supplier_name;
+	•	related_employee_id;
+	•	related_inventory_item_id;
+	•	related_task_id;
+	•	related_cattle_lot_id;
+	•	related_farm_id;
+	•	source_message_id;
+	•	has_receipt;
+	•	status;
+	•	created_at;
+	•	updated_at.
+revenues
+Receitas.
+Campos:
+	•	id;
+	•	category;
+	•	description;
+	•	amount;
+	•	revenue_date;
+	•	payment_method;
+	•	related_sale_id;
+	•	source_message_id;
+	•	status;
+	•	created_at;
+	•	updated_at.
+inventory_items
+Itens de estoque.
+Campos:
+	•	id;
+	•	name;
+	•	category;
+	•	unit;
+	•	current_quantity;
+	•	minimum_quantity;
+	•	location_description;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+inventory_movements
+Movimentações de estoque.
+Campos:
+	•	id;
+	•	inventory_item_id;
+	•	movement_type;
+	•	quantity;
+	•	unit;
+	•	movement_date;
+	•	reason;
+	•	related_expense_id;
+	•	related_task_id;
+	•	source_message_id;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+Tipos:
+	•	entrada;
+	•	saída;
+	•	ajuste;
+	•	perda;
+	•	uso;
+	•	devolução.
+tasks
+Tarefas.
+Campos:
+	•	id;
+	•	title;
+	•	description;
+	•	assigned_to_user_id;
+	•	assigned_to_employee_id;
+	•	due_date;
+	•	priority;
+	•	task_type;
+	•	related_farm_id;
+	•	related_pasture_id;
+	•	related_cattle_lot_id;
+	•	status;
+	•	completed_at;
+	•	source_message_id;
+	•	notes;
+	•	created_at;
+	•	updated_at.
+alerts
+Alertas.
+Campos:
+	•	id;
+	•	alert_type;
+	•	title;
+	•	message;
+	•	due_date;
+	•	related_table;
+	•	related_id;
+	•	recipient_user_id;
+	•	sent_at;
+	•	status;
+	•	created_at;
+	•	updated_at.
+documents
+Documentos.
+Campos:
+	•	id;
+	•	document_type;
+	•	title;
+	•	description;
+	•	document_date;
+	•	expiration_date;
+	•	related_table;
+	•	related_id;
+	•	file_url;
+	•	status;
+	•	created_at;
+	•	updated_at.
+attachments
+Anexos.
+Campos:
+	•	id;
+	•	file_name;
+	•	file_type;
+	•	file_url;
+	•	storage_path;
+	•	uploaded_by;
+	•	source_message_id;
+	•	related_table;
+	•	related_id;
+	•	created_at;
+	•	updated_at.
+incoming_messages
+Mensagens recebidas.
+Campos:
+	•	id;
+	•	external_message_id;
+	•	provider;
+	•	sender_phone;
+	•	sender_user_id;
+	•	message_type;
+	•	raw_payload_json;
+	•	text_content;
+	•	media_id;
+	•	media_url;
+	•	processed_at;
+	•	processing_status;
+	•	created_at.
+external_message_id deve ser único para evitar duplicidade.
+pending_actions
+Ações pendentes de confirmação.
+Campos:
+	•	id;
+	•	source_message_id;
+	•	action_type;
+	•	interpreted_data_json;
+	•	confidence_score;
+	•	missing_fields_json;
+	•	requires_confirmation;
+	•	confirmation_status;
+	•	confirmed_by;
+	•	confirmed_at;
+	•	expires_at;
+	•	created_at;
+	•	updated_at.
+Status:
+	•	pending;
+	•	confirmed;
+	•	rejected;
+	•	expired;
+	•	needs_more_info;
+	•	executed;
+	•	failed.
+audit_logs
+Histórico de alterações.
+Campos:
+	•	id;
+	•	table_name;
+	•	record_id;
+	•	action;
+	•	before_data_json;
+	•	after_data_json;
+	•	changed_by;
+	•	changed_at;
+	•	reason;
+	•	source_message_id.
+gravel_operations
+Cascalheira.
+Campos:
+	•	id;
+	•	area_id;
+	•	operation_date;
+	•	operation_type;
+	•	loads_quantity;
+	•	estimated_volume;
+	•	origin_location;
+	•	destination_location;
+	•	purpose;
+	•	machine_used;
+	•	responsible_person;
+	•	related_task_id;
+	•	document_id;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+suppression_operations
+Supressão/ambiental.
+Campos:
+	•	id;
+	•	area_id;
+	•	operation_date;
+	•	operation_type;
+	•	authorization_number;
+	•	authorization_expiration_date;
+	•	responsible_technician;
+	•	approximate_area;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+maintenance_records
+Manutenção.
+Campos:
+	•	id;
+	•	asset_name;
+	•	asset_type;
+	•	maintenance_type;
+	•	maintenance_date;
+	•	cost_amount;
+	•	responsible_person;
+	•	related_expense_id;
+	•	notes;
+	•	status;
+	•	created_at;
+	•	updated_at.
+
+9. Contrato da IA
+A IA deve sempre devolver JSON estruturado.
+Formato base:
+{   "intent": "string",   "module": "string",   "action_type": "string",   "confidence": 0.0,   "requires_confirmation": true,   "missing_fields": [],   "extracted_data": {},   "human_summary": "string",   "risk_level": "low | medium | high",   "should_create_pending_action": true }
+Exemplos de intents
+	•	create_expense
+	•	create_revenue
+	•	create_employee_payment
+	•	create_inventory_purchase
+	•	create_inventory_usage
+	•	create_cattle_sale
+	•	create_cattle_birth
+	•	create_cattle_death
+	•	move_cattle_lot
+	•	create_task
+	•	complete_task
+	•	create_gravel_operation
+	•	create_suppression_note
+	•	create_document
+	•	answer_question
+	•	unknown
+Regras da IA
+A IA deve:
+	•	interpretar português informal;
+	•	aceitar erros de digitação;
+	•	aceitar áudio transcrito;
+	•	identificar valores;
+	•	identificar datas;
+	•	identificar nomes;
+	•	identificar categorias;
+	•	identificar quando falta informação;
+	•	perguntar quando não tiver certeza;
+	•	nunca inventar dado crítico;
+	•	sempre retornar nível de confiança;
+	•	sempre marcar ação crítica como confirmação obrigatória.
+
+10. Fluxos principais do WhatsApp
+10.1 Registrar despesa
+Usuário:
+Comprei 10 sacos de sal por 1.800.
+Sistema:
+Entendi: compra de 10 sacos de sal mineral por R$ 1.800. Vou lançar como despesa e entrada de estoque. Confirmar?
+Usuário:
+Sim.
+Sistema:
+Registrado.
+
+10.2 Registrar adiantamento
+Usuário:
+João recebeu 300 de adiantamento.
+Sistema:
+Entendi: adiantamento de R$ 300 para João. Confirmar?
+Usuário:
+Sim.
+Sistema:
+Registrado no funcionário João.
+
+10.3 Registrar venda
+Usuário:
+Vendi 20 bois pro frigorífico.
+Sistema:
+Entendi: venda de 20 bois. Faltam alguns dados: frigorífico, valor, peso ou previsão de pagamento. Quer registrar como venda pendente?
+Usuário:
+Sim.
+Sistema:
+Venda pendente registrada. Depois você pode completar os dados.
+
+10.4 Registrar nascimento
+Usuário:
+Nasceram 3 bezerros no pasto 4.
+Sistema:
+Entendi: nascimento de 3 bezerros no Pasto 4. Confirmar alteração no rebanho?
+Usuário:
+Sim.
+Sistema:
+Registrado.
+
+10.5 Registrar morte
+Usuário:
+Morreu uma vaca no pasto 2.
+Sistema:
+Entendi: morte de 1 vaca no Pasto 2. Confirmar baixa no rebanho?
+Usuário:
+Sim.
+Sistema:
+Registrado.
+
+10.6 Registrar cascalheira
+Usuário:
+Tiramos 4 cargas de cascalho da entrada para arrumar a estrada do pasto 3.
+Sistema:
+Entendi: retirada de 4 cargas de cascalho da área da entrada, usadas na estrada do Pasto 3. Confirmar registro?
+Usuário:
+Sim.
+Sistema:
+Registrado em cascalheira e manutenção de estrada.
+
+10.7 Registrar supressão
+Usuário:
+Começamos a limpar a área nova.
+Sistema:
+Isso pode ser uma atividade ambiental/supressão. Informe a área e se existe autorização/documento. Deseja registrar como observação pendente?
+Usuário:
+Sim.
+Sistema:
+Registrado como pendência ambiental para revisão.
+
+10.8 Consulta financeira
+Usuário:
+Quanto gastamos esse mês?
+Sistema:
+Até agora, foram registrados R$ X em despesas neste mês. Maiores categorias: sal, funcionário e combustível.
+
+10.9 Consulta de gado
+Usuário:
+Quantas cabeças temos hoje?
+Sistema:
+Hoje constam X cabeças registradas no sistema, distribuídas em Y lotes.
+
+10.10 Alertas
+Sistema envia:
+Alerta: a venda para o frigorífico X ainda está sem pagamento registrado.
+Sistema envia:
+Alerta: o estoque de sal mineral está abaixo do mínimo.
+Sistema envia:
+Alerta: há tarefa de conserto de cerca atrasada no Pasto 3.
+
+11. Painel web inicial
+O painel inicial deve ser simples.
+Páginas necessárias
+	•	Login;
+	•	Dashboard;
+	•	Fazendas;
+	•	Pastos;
+	•	Lotes de gado;
+	•	Movimentações;
+	•	Despesas;
+	•	Receitas;
+	•	Vendas;
+	•	Funcionários;
+	•	Pagamentos;
+	•	Estoque;
+	•	Tarefas;
+	•	Documentos;
+	•	Mensagens recebidas;
+	•	Ações pendentes;
+	•	Alertas;
+	•	Auditoria.
+Dashboard inicial
+Mostrar:
+	•	total de cabeças;
+	•	despesas do mês;
+	•	receitas do mês;
+	•	vendas pendentes;
+	•	tarefas pendentes;
+	•	estoque baixo;
+	•	alertas ativos;
+	•	últimos registros;
+	•	mensagens pendentes de confirmação.
+
+12. Segurança e confiabilidade
+Regras obrigatórias
+	•	Nenhuma tabela crítica deve deletar dados definitivamente.
+	•	Toda ação crítica exige confirmação.
+	•	Todo registro deve guardar o usuário responsável.
+	•	Toda mensagem bruta deve ser salva.
+	•	Todo anexo deve ser salvo.
+	•	Toda alteração deve gerar log.
+	•	Deve existir exportação de dados.
+	•	Deve existir rotina de backup.
+	•	Deve existir controle de duplicidade.
+	•	A IA não pode executar alteração sem validação.
+Controle de duplicidade
+O WhatsApp envia identificador único de mensagem.
+Salvar como:
+	•	external_message_id
+Criar constraint unique nessa coluna.
+Se o mesmo webhook for recebido duas vezes, o sistema deve ignorar a duplicata.
+Auditoria
+Toda alteração em tabelas críticas deve registrar:
+	•	tabela;
+	•	registro;
+	•	ação;
+	•	dados antes;
+	•	dados depois;
+	•	usuário;
+	•	data;
+	•	motivo.
+Tabelas críticas:
+	•	cattle_lots;
+	•	cattle_movements;
+	•	cattle_sales;
+	•	expenses;
+	•	revenues;
+	•	employee_payments;
+	•	inventory_movements;
+	•	gravel_operations;
+	•	suppression_operations;
+	•	documents.
+
+13. Backup e exportação
+Backup principal
+Usar backup do Supabase no plano pago quando o sistema entrar em uso real.
+Backup adicional
+Criar exportação periódica para:
+	•	CSV;
+	•	planilha;
+	•	Google Drive ou armazenamento externo.
+Arquivos
+Fotos, notas, comprovantes e áudios devem ter backup separado, pois os arquivos do Storage precisam de estratégia própria além do backup do banco.
+Exportações desejadas
+	•	despesas por período;
+	•	receitas por período;
+	•	vendas;
+	•	funcionários;
+	•	adiantamentos;
+	•	estoque;
+	•	gado/lotes;
+	•	tarefas;
+	•	documentos;
+	•	cascalheira;
+	•	supressão.
+
+14. Custos mensais esperados
+O sistema será desenvolvido por Gabriel, com ajuda de IA. Portanto, não há custo de desenvolvimento terceirizado no início.
+Custos previstos são apenas de ferramentas.
+Plano inicial sério
+Estimativa:
+R$ 200 a R$ 350/mês
+Inclui:
+	•	banco de dados confiável;
+	•	storage;
+	•	WhatsApp;
+	•	IA para texto;
+	•	transcrição de áudio;
+	•	leitura de imagem;
+	•	alertas;
+	•	backup básico;
+	•	uso para 3 usuários.
+Plano completo com folga
+Estimativa:
+R$ 350 a R$ 600/mês
+Inclui:
+	•	banco em plano melhor;
+	•	mais armazenamento;
+	•	mais uso de IA;
+	•	mais backup;
+	•	painel mais completo;
+	•	relatórios avançados;
+	•	mais automações;
+	•	mais margem de segurança.
+Recomendação
+Começar com teto aprovado de:
+R$ 300/mês por 3 meses
+Se o sistema virar essencial, subir para:
+R$ 500/mês
+
+15. Ordem de desenvolvimento
+Etapa 0 — Preparação
+Criar:
+	•	conta GitHub;
+	•	projeto Supabase;
+	•	pasta local do projeto;
+	•	ambiente Antigravity;
+	•	arquivo .env.local;
+	•	repositório Git.
+Etapa 1 — Criar projeto
+Stack:
+	•	Next.js;
+	•	TypeScript;
+	•	Tailwind;
+	•	Supabase client;
+	•	ESLint;
+	•	Prettier.
+Etapa 2 — Criar banco
+Criar migrations para:
+	•	users_profiles;
+	•	farms;
+	•	areas;
+	•	pastures;
+	•	cattle_lots;
+	•	cattle_movements;
+	•	weighings;
+	•	cattle_sales;
+	•	employees;
+	•	employee_payments;
+	•	expenses;
+	•	revenues;
+	•	inventory_items;
+	•	inventory_movements;
+	•	tasks;
+	•	alerts;
+	•	documents;
+	•	attachments;
+	•	incoming_messages;
+	•	pending_actions;
+	•	audit_logs;
+	•	gravel_operations;
+	•	suppression_operations;
+	•	maintenance_records.
+Etapa 3 — Criar painel básico
+Páginas CRUD simples para:
+	•	fazendas;
+	•	pastos;
+	•	lotes;
+	•	funcionários;
+	•	despesas;
+	•	vendas;
+	•	estoque;
+	•	tarefas.
+Etapa 4 — Criar auditoria
+Implementar:
+	•	soft delete;
+	•	audit_logs;
+	•	status;
+	•	histórico de alterações.
+Etapa 5 — Criar interpretador de IA por texto
+Função:
+	•	interpretRuralMessage(text, context)
+Entrada:
+	•	texto;
+	•	usuário;
+	•	contexto disponível;
+	•	data atual;
+	•	listas de funcionários;
+	•	listas de fazendas;
+	•	listas de pastos;
+	•	listas de lotes.
+Saída:
+	•	JSON estruturado.
+Etapa 6 — Criar ações pendentes
+Quando IA interpretar ação crítica:
+	•	criar pending_action;
+	•	mostrar resumo;
+	•	aguardar confirmação.
+Etapa 7 — Conectar WhatsApp
+Criar Edge Function:
+	•	whatsapp-webhook
+Funções:
+	•	validar webhook;
+	•	receber mensagem;
+	•	salvar mensagem bruta;
+	•	evitar duplicidade;
+	•	responder recebimento;
+	•	acionar IA;
+	•	criar ação pendente.
+Etapa 8 — Confirmação pelo WhatsApp
+Fluxo:
+Usuário responde:
+	•	“sim”;
+	•	“confirmo”;
+	•	“pode lançar”;
+	•	“não”;
+	•	“cancelar”.
+Sistema executa ou cancela.
+Etapa 9 — Consultas pelo WhatsApp
+Criar intents de pergunta:
+	•	gastos do mês;
+	•	despesas por categoria;
+	•	total de gado;
+	•	gado por pasto;
+	•	vendas pendentes;
+	•	pagamentos;
+	•	estoque;
+	•	tarefas;
+	•	alertas.
+Etapa 10 — Áudio
+Implementar:
+	•	receber áudio;
+	•	baixar mídia;
+	•	salvar no storage;
+	•	transcrever;
+	•	interpretar;
+	•	confirmar;
+	•	salvar.
+Etapa 11 — Imagem
+Implementar:
+	•	receber imagem;
+	•	baixar mídia;
+	•	salvar no storage;
+	•	analisar imagem;
+	•	extrair dados;
+	•	pedir confirmação;
+	•	salvar.
+Etapa 12 — Alertas
+Criar rotina diária para:
+	•	contas a vencer;
+	•	venda sem pagamento;
+	•	estoque baixo;
+	•	tarefa atrasada;
+	•	pesagem atrasada;
+	•	documento vencendo;
+	•	licença/autorização vencendo.
+Etapa 13 — Backup/exportação
+Criar:
+	•	exportação CSV;
+	•	exportação mensal;
+	•	cópia dos arquivos;
+	•	rotina de conferência.
+
+16. Prompts para o Antigravity
+Prompt 1 — Criar projeto
+Crie um projeto chamado garca-branca-gestao usando Next.js, TypeScript, Tailwind CSS e Supabase.  O sistema será uma gestão rural familiar para 3 usuários: Gabriel, pai e mãe. O objetivo é gerenciar fazendas, pastos, gado, funcionários, financeiro, estoque, documentos, tarefas, manejo, cascalheira e supressão.  Não implemente WhatsApp ainda. Primeiro crie a estrutura do projeto, conexão com Supabase, autenticação básica e painel administrativo simples.  Crie uma arquitetura limpa, modular e preparada para receber webhooks do WhatsApp no futuro.
+Prompt 2 — Criar migrations
+Crie as migrations SQL do Supabase para as tabelas principais do projeto descrito no arquivo PROJETO-GARCA-BRANCA.md.  Use UUID como chave primária, timestamps, status, soft delete quando necessário, created_by e updated_by.  Crie as tabelas: users_profiles, farms, areas, pastures, cattle_lots, cattle_movements, weighings, cattle_sales, employees, employee_payments, expenses, revenues, inventory_items, inventory_movements, tasks, alerts, documents, attachments, incoming_messages, pending_actions, audit_logs, gravel_operations, suppression_operations e maintenance_records.  Adicione constraints básicas, foreign keys e índices úteis.
+Prompt 3 — Criar painel CRUD
+Crie um painel administrativo simples para o projeto.  Páginas: - dashboard - fazendas - áreas - pastos - lotes de gado - movimentações - funcionários - pagamentos - despesas - receitas - vendas - estoque - tarefas - documentos - mensagens recebidas - ações pendentes - alertas  O design pode ser simples, mas deve ser organizado e responsivo.
+Prompt 4 — Criar auditoria
+Implemente um sistema de auditoria.  Toda alteração em tabelas críticas deve criar registro em audit_logs com table_name, record_id, action, before_data_json, after_data_json, changed_by, changed_at e reason.  Não permitir delete definitivo em tabelas críticas. Usar soft delete com status, deleted_at e deleted_by.
+Prompt 5 — Criar IA de interpretação
+Crie uma função interpretRuralMessage(text, context) em TypeScript.  Ela deve receber uma mensagem informal em português sobre a fazenda e retornar um JSON estruturado com: intent, module, action_type, confidence, requires_confirmation, missing_fields, extracted_data, human_summary, risk_level e should_create_pending_action.  A função deve reconhecer despesas, receitas, vendas de gado, nascimento, morte, movimentação de lote, pesagem, pagamento de funcionário, adiantamento, estoque, tarefa, cascalheira, supressão e perguntas de consulta.
+Prompt 6 — Criar pending actions
+Implemente o fluxo de pending_actions.  Quando uma mensagem for interpretada como ação crítica ou tiver confiança abaixo do ideal, criar uma ação pendente em pending_actions. O sistema deve gerar um resumo humano para confirmação.  Se confirmada, executar a ação no banco. Se rejeitada, marcar como rejected. Se faltar informação, marcar como needs_more_info.
+Prompt 7 — Criar webhook WhatsApp
+Crie uma Supabase Edge Function chamada whatsapp-webhook.  Ela deve: - validar webhook da Meta; - receber mensagens do WhatsApp; - salvar payload bruto em incoming_messages; - evitar duplicidade por external_message_id; - identificar texto, áudio e imagem; - para texto, chamar interpretRuralMessage; - criar pending_action quando necessário; - responder mensagem temporária ao usuário.
+Prompt 8 — Criar consulta pelo WhatsApp
+Implemente intents de pergunta pelo WhatsApp.  Exemplos: - quanto gastamos esse mês? - quanto gastamos com sal? - quantas cabeças temos? - quantas cabeças tem no pasto 3? - quais vendas estão pendentes? - quanto João recebeu? - tem tarefa atrasada? - tem estoque baixo? - tem conta vencendo?  As respostas devem consultar o banco de dados, nunca responder de memória.
+Prompt 9 — Criar alertas
+Implemente sistema de alertas automáticos.  Criar função diária para verificar: - contas a vencer; - vendas sem pagamento; - estoque abaixo do mínimo; - tarefas atrasadas; - documentos vencendo; - pesagens atrasadas; - manejos pendentes; - autorizações de supressão vencendo.  Criar registros na tabela alerts e preparar envio via WhatsApp.
+Prompt 10 — Áudio e imagem
+Implemente suporte futuro para áudio e imagem recebidos pelo WhatsApp.  Para áudio: - baixar mídia; - salvar no storage; - transcrever; - interpretar texto transcrito; - criar pending_action.  Para imagem: - baixar mídia; - salvar no storage; - analisar imagem com IA; - extrair valor, data, fornecedor, item e tipo de documento; - criar pending_action para confirmação.
+
+17. Dados iniciais conhecidos
+Informações já conhecidas do projeto:
+	•	Região: Extrema/RO.
+	•	Sede: Garça Branca.
+	•	Localização aproximada: km 1010.
+	•	Atividade principal: gado.
+	•	Venda para frigorífico.
+	•	Controle atual: memória, cadernos e WhatsApp.
+	•	Gado costuma ser controlado por lote/marca, não necessariamente por brinco individual.
+	•	Usuários iniciais: Gabriel, pai e mãe.
+	•	Gabriel possui 19 cabeças de gado cuidadas junto com o rebanho da família.
+	•	Há interesse em controlar fazendas, gado, funcionários, vendas, despesas, estoque, manejo, cascalheira, supressão e documentos.
+	•	O sistema deve aceitar texto, áudio e fotos de nota/comprovante.
+	•	O sistema deve responder perguntas pelo WhatsApp.
+	•	O sistema deve enviar alertas automáticos.
+	•	O banco de dados precisa ser confiável.
+	•	Planilha será usada apenas como exportação/backup, não como fonte principal.
+
+18. Informações que ainda precisam ser coletadas
+Perguntar aos pais:
+Estrutura
+	•	Quantas fazendas/áreas existem?
+	•	Nome de cada área.
+	•	Quantos pastos existem?
+	•	Nome ou número de cada pasto.
+	•	Existe retiro, sede, curral, cascalheira, área de plantio, área em regularização ou área restrita?
+Gado
+	•	Quantas cabeças existem hoje?
+	•	Como o gado é separado?
+	•	Quais categorias usam?
+	•	Existe controle por lote?
+	•	Existe gado de terceiros?
+	•	Como identificar o gado do Gabriel?
+	•	Como registram nascimento, morte, compra e venda?
+Vendas
+	•	Para quais frigoríficos vendem?
+	•	Venda é por cabeça, peso vivo, arroba ou carcaça?
+	•	Como controlam pagamento?
+	•	Onde ficam notas/comprovantes/documentos?
+Funcionários
+	•	Quantos funcionários existem?
+	•	Nome de cada funcionário.
+	•	Função de cada um.
+	•	Salário ou forma de pagamento.
+	•	Quem recebe adiantamento?
+	•	Quem pode comprar em nome da fazenda?
+Despesas
+	•	Principais gastos mensais.
+	•	Onde ficam comprovantes?
+	•	Quem compra sal, ração, remédio, combustível etc.?
+	•	Quais categorias são mais importantes?
+Estoque
+	•	Controlam sal?
+	•	Controlam ração?
+	•	Controlam remédio?
+	•	Controlam combustível?
+	•	Querem alerta de estoque baixo?
+Manejo
+	•	Fazem pesagem com que frequência?
+	•	Fazem vacinação/verminação com calendário?
+	•	Fazem rotação de pasto?
+	•	Quais manejos querem lembrar?
+Cascalheira
+	•	Existe cascalheira em uso?
+	•	Onde fica?
+	•	Controlam cargas?
+	•	O cascalho é usado onde?
+	•	Existe documento/autorização?
+Supressão
+	•	Existe supressão em andamento?
+	•	Existe autorização?
+	•	Quem acompanha?
+	•	Existem fotos antes/depois?
+	•	Há prazos/documentos para controlar?
+Alertas
+	•	Quais alertas seriam mais úteis?
+	•	Contas?
+	•	Funcionários?
+	•	Estoque?
+	•	Vendas?
+	•	Pesagem?
+	•	Manejo?
+	•	Documentos?
+	•	Cascalheira?
+	•	Supressão?
+
+19. Definição do MVP
+O MVP deve ser considerado pronto quando:
+	•	Gabriel consegue fazer login.
+	•	Gabriel consegue cadastrar fazenda.
+	•	Gabriel consegue cadastrar pasto.
+	•	Gabriel consegue cadastrar lote de gado.
+	•	Gabriel consegue cadastrar funcionário.
+	•	Gabriel consegue cadastrar despesa.
+	•	Gabriel consegue cadastrar venda.
+	•	Gabriel consegue cadastrar estoque.
+	•	Gabriel consegue cadastrar tarefa.
+	•	O sistema salva tudo no Supabase.
+	•	O sistema tem audit_logs.
+	•	O sistema não deleta dados críticos definitivamente.
+	•	O sistema permite ver registros em painel.
+	•	O sistema permite criar pending_actions.
+	•	A IA consegue interpretar mensagens de texto em teste local.
+	•	O sistema consegue responder pelo menos consultas básicas.
+	•	O sistema está preparado para conectar WhatsApp.
+
+20. Definição da primeira versão com WhatsApp
+A primeira versão com WhatsApp será considerada pronta quando:
+	•	O webhook do WhatsApp recebe mensagem.
+	•	A mensagem bruta é salva.
+	•	O sistema evita duplicidade.
+	•	Texto é interpretado pela IA.
+	•	Ação crítica vira pending_action.
+	•	Sistema pede confirmação.
+	•	Usuário confirma.
+	•	Registro é salvo.
+	•	Usuário consegue perguntar “quanto gastamos esse mês?”
+	•	Usuário consegue perguntar “quantas cabeças temos?”
+	•	Usuário consegue perguntar “tem venda pendente?”
+	•	Sistema envia pelo menos um tipo de alerta automático.
+
+21. Regras de qualidade
+O sistema deve ser desenvolvido com:
+	•	TypeScript;
+	•	código modular;
+	•	validação de dados;
+	•	tratamento de erro;
+	•	logs;
+	•	migrations versionadas;
+	•	Git;
+	•	commits frequentes;
+	•	ambiente de teste;
+	•	variáveis de ambiente;
+	•	nenhuma chave secreta no código;
+	•	comentários em funções críticas;
+	•	testes básicos para interpretação de mensagem;
+	•	testes básicos para evitar duplicidade.
+
+22. Estrutura sugerida de pastas
+garca-branca-gestao/   app/     dashboard/     farms/     areas/     pastures/     cattle-lots/     cattle-movements/     employees/     expenses/     revenues/     sales/     inventory/     tasks/     documents/     alerts/     pending-actions/     audit/   components/   lib/     supabase/     ai/     whatsapp/     validation/     audit/     alerts/   supabase/     migrations/     functions/       whatsapp-webhook/       daily-alerts/   docs/     PROJETO-GARCA-BRANCA.md   tests/   .env.example   README.md
+
+23. Variáveis de ambiente previstas
+NEXT_PUBLIC_SUPABASE_URL= NEXT_PUBLIC_SUPABASE_ANON_KEY= SUPABASE_SERVICE_ROLE_KEY=  AI_PROVIDER= OPENAI_API_KEY= GEMINI_API_KEY=  WHATSAPP_VERIFY_TOKEN= WHATSAPP_ACCESS_TOKEN= WHATSAPP_PHONE_NUMBER_ID= WHATSAPP_BUSINESS_ACCOUNT_ID=  APP_BASE_URL= CRON_SECRET=
+
+24. Observações finais
+Este projeto deve ser construído com calma, mas com fundação profissional.
+A ordem correta é:
+	•	banco de dados;
+	•	painel simples;
+	•	auditoria;
+	•	IA de texto;
+	•	ações pendentes;
+	•	WhatsApp;
+	•	consultas;
+	•	alertas;
+	•	áudio;
+	•	imagem;
+	•	backup;
+	•	módulos avançados.
+Regra principal:
+O WhatsApp é a entrada. A IA interpreta. O banco guarda. O sistema valida. O usuário confirma. A auditoria registra.
+Não construir primeiro um app bonito.
+Construir primeiro um sistema confiável.
