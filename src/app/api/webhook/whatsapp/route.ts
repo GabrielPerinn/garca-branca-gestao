@@ -9,6 +9,7 @@ import {
 import { normalizePhone, phoneIdentityVariants, phonesAreEquivalent } from '@/lib/phone'
 import { isAllowedAudioType, MAX_AUDIO_BYTES, transcribeAudio } from '@/lib/ai/transcription'
 import { linkEvidenceToPendingAction, storeAIMessageEvidence } from '@/lib/ai/evidence'
+import { hasPdfSignature, MAX_WHATSAPP_PDF_BYTES, safePdfFilename } from '@/lib/ai/pdf-document'
 import {
   classifyConversationReply,
   conversationMessages,
@@ -27,11 +28,14 @@ interface WhatsAppMessage {
   text?: { body?: string }
   audio?: { id?: string; mime_type?: string; voice?: boolean }
   image?: { id?: string; mime_type?: string; caption?: string }
+  document?: { id?: string; mime_type?: string; filename?: string; caption?: string }
   [key: string]: unknown
 }
 
 const MAX_WHATSAPP_IMAGE_BYTES = 5 * 1024 * 1024
 const ALLOWED_WHATSAPP_IMAGE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp'])
+
+export const maxDuration = 300
 
 function mediaExtension(contentType: string) {
   const extensions: Record<string, string> = {
@@ -49,6 +53,7 @@ function mediaExtension(contentType: string) {
     'image/jpeg': 'jpg',
     'image/png': 'png',
     'image/webp': 'webp',
+    'application/pdf': 'pdf',
   }
   return extensions[contentType] ?? 'bin'
 }
@@ -82,9 +87,11 @@ async function downloadWhatsAppMedia(mediaId: string, maximumBytes: number) {
   if (Number.isFinite(declaredLength) && declaredLength > maximumBytes) throw new Error('A mídia excede o tamanho permitido.')
   const bytes = new Uint8Array(await mediaResponse.arrayBuffer())
   if (bytes.byteLength > maximumBytes) throw new Error('A mídia excede o tamanho permitido.')
-  const contentType = (mediaResponse.headers.get('content-type') || metadata.mime_type || '')
+  const metadataContentType = (metadata.mime_type || '')
     .toLowerCase().split(';')[0].trim()
-  return { bytes, contentType, mediaUrl: mediaUrl.toString() }
+  const contentType = (mediaResponse.headers.get('content-type') || metadataContentType)
+    .toLowerCase().split(';')[0].trim()
+  return { bytes, contentType, metadataContentType, mediaUrl: mediaUrl.toString() }
 }
 
 interface WebhookBody {
@@ -428,7 +435,7 @@ async function processMessage(
     return
   }
 
-  if (!['text', 'audio', 'image'].includes(message.type ?? '')) {
+  if (!['text', 'audio', 'image', 'document'].includes(message.type ?? '')) {
     await sendWhatsAppReply(sender.phone, conversationMessages.unsupportedMedia)
     return
   }
@@ -449,6 +456,7 @@ async function processMessage(
   let textContent = message.text?.body?.trim() ?? ''
   let imageBase64: string | undefined
   let transcription: string | undefined
+  let documentFile: { fileData: string; filename: string } | undefined
   let mediaId: string | null = null
   let mediaUrl: string | null = null
   let mediaBytes: Uint8Array | undefined
@@ -485,6 +493,27 @@ async function processMessage(
       imageBase64 = `data:${media.contentType};base64,${Buffer.from(media.bytes).toString('base64')}`
       const caption = message.image?.caption?.trim()
       textContent = caption || 'Analise esta imagem e extraia somente os dados visíveis.'
+    }
+    if (message.type === 'document') {
+      mediaId = message.document?.id?.trim() || null
+      if (!mediaId) throw new Error('Documento recebido sem identificador.')
+      const media = await downloadWhatsAppMedia(mediaId, MAX_WHATSAPP_PDF_BYTES)
+      const declaredContentType = message.document?.mime_type?.toLowerCase().split(';')[0].trim()
+      if (![media.contentType, media.metadataContentType, declaredContentType].includes('application/pdf')) {
+        throw new Error('Por segurança, envie somente documentos em PDF.')
+      }
+      if (!hasPdfSignature(media.bytes)) throw new Error('O arquivo recebido não parece ser um PDF válido.')
+      mediaUrl = media.mediaUrl
+      mediaBytes = media.bytes
+      mediaContentType = 'application/pdf'
+      mediaFileName = safePdfFilename(message.document?.filename, externalMessageId)
+      documentFile = {
+        fileData: `data:application/pdf;base64,${Buffer.from(media.bytes).toString('base64')}`,
+        filename: mediaFileName,
+      }
+      const caption = message.document?.caption?.trim()
+      textContent = caption
+        || 'Leia este PDF como documento da fazenda, extraia somente os dados comprovados e prepare os registros correspondentes.'
     }
   } catch (error) {
     console.error('[WhatsApp] Falha ao preparar mídia:', error instanceof Error ? error.message : error)
@@ -551,7 +580,7 @@ async function processMessage(
         bytes: mediaBytes,
         mimeType: mediaContentType,
         fileName: mediaFileName,
-        mediaKind: message.type === 'audio' ? 'audio' : 'image',
+        mediaKind: message.type === 'audio' ? 'audio' : message.type === 'document' ? 'document' : 'image',
         incomingMessageId: incomingMessage.id,
         externalMessageId,
         uploadedBy: sender.profileId,
@@ -586,7 +615,12 @@ async function processMessage(
         externalMessageId,
         incomingMessageId: incomingMessage.id,
         imageBase64,
-        inputModality: message.type === 'audio' ? 'audio' : message.type === 'image' ? 'image' : 'text',
+        documentFile,
+        inputModality: message.type === 'audio'
+          ? 'audio'
+          : message.type === 'image'
+            ? 'image'
+            : message.type === 'document' ? 'document' : 'text',
         returnDetails: true,
       } as const
       const revision = replyIntent === 'correction'

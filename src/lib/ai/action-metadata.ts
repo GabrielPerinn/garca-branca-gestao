@@ -127,6 +127,9 @@ export const blockingFieldLabels: Record<string, string> = {
   payment_amount: 'valor do contrato',
   payment_frequency: 'frequência do pagamento',
   first_due_date: 'primeiro vencimento',
+  expense_date: 'data da despesa',
+  supplier_name: 'fornecedor ou emissor',
+  payment_status: 'situação do pagamento',
   product_name: 'produto usado como pagamento',
   product_quantity: 'quantidade do produto',
   production_percentage: 'percentual da produção',
@@ -155,6 +158,13 @@ export function getBlockingFields(
     && payload.movement_type !== 'purchase'
   ) {
     actionRequirements.push({ canonical: 'lot_name', aliases: ['lot_name', 'cattle_lot_name', 'cattle_lot_id'] })
+  }
+  if (actionType === 'create_expense' && payload.source_document === true) {
+    actionRequirements.push(
+      { canonical: 'expense_date', aliases: ['expense_date', 'date', 'document_issue_date'] },
+      { canonical: 'supplier_name', aliases: ['supplier_name'] },
+      { canonical: 'payment_status', aliases: ['payment_status'] },
+    )
   }
   if (actionType === 'create_rural_contract' && String(payload.payment_type) !== 'free') {
     actionRequirements.push(

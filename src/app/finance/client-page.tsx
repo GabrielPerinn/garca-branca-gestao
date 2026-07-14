@@ -5,7 +5,7 @@ import { createExpense, createRevenue, deleteExpense, deleteRevenue } from "./ac
 import { Modal } from "@/components/ui/Modal";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
-import { DollarSign, TrendingDown, TrendingUp, Plus } from "lucide-react";
+import { DollarSign, FileText, TrendingDown, TrendingUp, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { InlineFeedback } from "@/components/ui/InlineFeedback";
 
@@ -171,6 +171,16 @@ export function FinanceClientPage({ expenses, revenues, totals, expError, revErr
                   <div className="min-w-0">
                     <p className="font-medium text-foreground">{e.description || 'Sem descrição'}</p>
                     <p className="text-sm text-muted-foreground mt-0.5">{e.category || 'Geral'} · {e.expense_date ? new Date(e.expense_date + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</p>
+                    {e.source_attachment_id && (
+                      <a
+                        href={`/api/evidence/${e.source_attachment_id}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1.5 inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                      >
+                        <FileText className="h-3.5 w-3.5" /> Ver PDF original
+                      </a>
+                    )}
                   </div>
                   <div className="flex w-full items-center justify-between gap-3 sm:w-auto sm:justify-end sm:gap-4">
                     <p className="font-bold text-red-700">− R$ {Number(e.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</p>

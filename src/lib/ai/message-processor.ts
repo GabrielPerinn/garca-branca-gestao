@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { z } from 'zod'
-import { completeRuralActionPlan, interpretRuralMessage } from './interpreter'
+import { completeRuralActionPlan, interpretRuralMessage, type AIInputDocument } from './interpreter'
 import type { AIResponse } from '@/lib/validation/ai-schema'
 import { createServiceRoleClient } from '@/lib/supabase/server'
 import { answerDatabaseQuestion } from '@/lib/ai/database-questions'
@@ -27,7 +27,8 @@ export interface IncomingMessageContext {
   externalMessageId?: string
   incomingMessageId?: string
   imageBase64?: string
-  inputModality?: 'text' | 'audio' | 'image'
+  documentFile?: AIInputDocument
+  inputModality?: 'text' | 'audio' | 'image' | 'document'
   forceProvider?: 'mock' | 'openai'
   returnDetails?: boolean
   conversationHistory?: ConversationMessage[]
@@ -44,7 +45,7 @@ type OpenClarification = {
   original_text: string
   plan_json: AIResponse
   source_message_id: string | null
-  input_modality: 'text' | 'audio' | 'image'
+  input_modality: 'text' | 'audio' | 'image' | 'document'
 }
 
 function buildPendingPayload(plan: AIResponse) {
@@ -238,6 +239,7 @@ export async function processIncomingMessage(
         draftPlan: openClarification.plan_json,
         followupText: text,
         imageBase64: messageContext.imageBase64,
+        documentFile: messageContext.documentFile,
         context,
         safetyIdentity: messageContext.senderUserId ?? messageContext.senderPhone,
       })
@@ -313,6 +315,7 @@ export async function processIncomingMessage(
     messageContext.forceProvider,
     context,
     messageContext.senderUserId ?? messageContext.senderPhone,
+    messageContext.documentFile,
   )
 
   if (aiResult.intent === 'answer_question') {
@@ -344,7 +347,8 @@ export async function processIncomingMessage(
         original_text: text,
         plan_json: aiResult,
         missing_fields: planIssues,
-        input_modality: messageContext.inputModality ?? (messageContext.imageBase64 ? 'image' : 'text'),
+        input_modality: messageContext.inputModality
+          ?? (messageContext.documentFile ? 'document' : messageContext.imageBase64 ? 'image' : 'text'),
         expires_at: new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString(),
       })
       if (clarificationError) throw new Error(`Erro ao salvar complemento pendente: ${clarificationError.message}`)
@@ -400,7 +404,8 @@ export async function processIncomingMessage(
     confirmation_status: 'pending',
     requested_by_user_id: messageContext.senderUserId ?? null,
     requested_by_phone: messageContext.senderPhone ?? null,
-    input_modality: messageContext.inputModality ?? (messageContext.imageBase64 ? 'image' : 'text'),
+    input_modality: messageContext.inputModality
+      ?? (messageContext.documentFile ? 'document' : messageContext.imageBase64 ? 'image' : 'text'),
     plan_version: 2,
     expires_at: new Date(Date.now() + 24 * 60 * 60 * 1_000).toISOString(),
   })
@@ -492,6 +497,7 @@ export async function revisePendingActionFromMessage(
     draftPlan,
     followupText: text,
     imageBase64: messageContext.imageBase64,
+    documentFile: messageContext.documentFile,
     safetyIdentity: messageContext.senderUserId ?? messageContext.senderPhone,
   })
   if (!completion.isRelated) {

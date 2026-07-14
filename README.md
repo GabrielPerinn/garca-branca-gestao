@@ -19,6 +19,7 @@ em ações pendentes, sempre sujeitas à revisão humana antes da execução.
 - Assistente e simulador de IA com validação estruturada e aprovação humana
 - IA transacional para cascalhamento e supressão vegetal, com exigência de autorização e dados operacionais antes da confirmação
 - WhatsApp assinado por HMAC, remetentes autorizados, idempotência e confirmação vinculada à conversa
+- Notas, recibos, boletos e comprovantes em PDF pelo WhatsApp, com leitura de texto e páginas, extração fiscal, perguntas sobre dados ausentes, cofre privado da evidência e bloqueio de NF-e duplicada
 - Consultas pelo WhatsApp baseadas no banco para financeiro mensal, rebanho, tarefas, estoque e contas a receber
 - Movimentações de estoque transacionais, com bloqueio de saldo negativo e reversão segura
 - Soft delete, trilha de auditoria, estados globais de erro/carregamento e navegação responsiva

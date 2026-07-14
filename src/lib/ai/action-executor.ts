@@ -36,6 +36,17 @@ const actionSchemas = {
     category: z.string().trim().min(1).max(100).optional(),
     expense_date: isoDate.optional(),
     date: isoDate.optional(),
+    supplier_name: z.string().trim().min(1).max(200).optional(),
+    supplier_document: z.string().trim().min(1).max(40).optional(),
+    payment_method: z.string().trim().min(1).max(100).optional(),
+    payment_status: z.enum(['paid', 'pending']).optional(),
+    payment_due_date: isoDate.optional(),
+    document_issue_date: isoDate.optional(),
+    fiscal_document_type: z.string().trim().min(1).max(80).optional(),
+    fiscal_document_number: z.string().trim().min(1).max(100).optional(),
+    fiscal_access_key: z.string().trim().regex(/^\d{44}$/).optional(),
+    source_document: z.boolean().optional(),
+    has_receipt: z.boolean().optional(),
   }).passthrough(),
   create_revenue: z.object({
     amount: positiveNumber,
@@ -803,7 +814,7 @@ export async function approvePendingActionInternal(
       p_actor_profile_id: context.actorProfileId ?? null,
       p_reason: context.reason ?? null,
     })
-    : supabase.rpc('execute_pending_action_transactional_v3', {
+    : supabase.rpc('execute_pending_action_transactional_v4', {
       p_action_id: actionId,
       p_expected_source_message_id: context.expectedSourceMessageId ?? null,
       p_steps: steps,

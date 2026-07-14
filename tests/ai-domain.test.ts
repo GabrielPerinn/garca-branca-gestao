@@ -56,6 +56,34 @@ test('prompt declara record_inventory_entry e seus campos obrigatórios', () => 
   assert.match(prompt, /create_livestock_protocol/)
   assert.match(prompt, /complete_livestock_protocol/)
   assert.match(prompt, /individual_weights/)
+  assert.match(prompt, /PDF de nota, recibo, boleto ou comprovante/)
+  assert.match(prompt, /source_document=true/)
+  assert.match(prompt, /Nunca presuma que está pago/)
+})
+
+test('documento financeiro exige dados essenciais antes da aprovação', () => {
+  const incomplete = getPendingActionPlanIssues('create_expense', {
+    source_document: true,
+    amount: 1_250.50,
+    description: 'Compra de sal mineral',
+    human_summary: 'Nota de compra de sal mineral.',
+  })
+  const complete = getPendingActionPlanIssues('create_expense', {
+    source_document: true,
+    amount: 1_250.50,
+    description: 'Compra de sal mineral',
+    expense_date: '2026-07-13',
+    supplier_name: 'Cooperativa Garça',
+    payment_status: 'paid',
+    human_summary: 'Nota de compra de sal mineral.',
+  })
+
+  assert.deepEqual(incomplete.map(issue => issue.field), [
+    'expense_date',
+    'supplier_name',
+    'payment_status',
+  ])
+  assert.deepEqual(complete, [])
 })
 
 test('mock estrutura criação e baixa de protocolos coletivos', async () => {

@@ -21,6 +21,7 @@ const extensionByMime: Record<string, string> = {
   'audio/x-wav': 'wav',
   'audio/webm': 'webm',
   'video/mp4': 'mp4',
+  'application/pdf': 'pdf',
 }
 
 export async function storeAIMessageEvidence(input: {

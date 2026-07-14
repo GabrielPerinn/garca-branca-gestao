@@ -131,6 +131,38 @@ test('repete o que ouviu e entrega comprovante de salvamento em linguagem comum'
   assert.match(receipt, /Você pode conferir tudo no sistema/)
 })
 
+test('pergunta com linguagem simples o que falta em uma nota PDF', () => {
+  const plan: AIResponse = {
+    intent: 'create_expense',
+    module: 'finance',
+    action_type: 'create',
+    confidence: 0.98,
+    requires_confirmation: true,
+    should_create_pending_action: true,
+    risk_level: 'medium',
+    extracted_data: JSON.stringify({
+      source_document: true,
+      amount: 1_250.50,
+      description: 'Compra de sal mineral',
+      expense_date: '2026-07-13',
+      supplier_name: 'Cooperativa Garça',
+    }),
+    secondary_actions: null,
+    missing_fields: ['payment_status'],
+    human_summary: 'Nota de compra de sal mineral.',
+  }
+
+  const reply = formatClarificationReply(plan, [{
+    actionIndex: 0,
+    intent: 'create_expense',
+    field: 'payment_status',
+    description: 'Compra de sal mineral',
+  }])
+
+  assert.match(reply, /já foi paga ou ainda está pendente/i)
+  assert.match(reply, /restante continua guardado/i)
+})
+
 test('descreve cancelamento de tarefa sem parecer que já executou', () => {
   const review = formatPendingReview('cancel_task', {
     task_name: 'Arrumar a cerca do lote 2',

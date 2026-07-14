@@ -270,6 +270,9 @@ function clarificationQuestion(issue: PlanIssue) {
     payment_amount: 'Qual é o valor do contrato?',
     payment_frequency: 'O pagamento é mensal, anual ou em outra frequência?',
     first_due_date: 'Quando vence o primeiro pagamento?',
+    expense_date: 'Qual data deve ser usada para essa despesa?',
+    supplier_name: 'Qual é o fornecedor ou emissor desse documento?',
+    payment_status: 'Essa nota já foi paga ou ainda está pendente?',
   }
   return questions[issue.field]
     || `Só falta informar ${blockingFieldLabels[issue.field] ?? issue.field}${subject}. Qual é esse dado?`
@@ -286,7 +289,7 @@ export function formatClarificationReply(plan: AIResponse, issues: PlanIssue[]) 
 }
 
 export const conversationMessages = {
-  unsupportedMedia: 'Por enquanto consigo receber texto, áudio e foto. Se a informação estiver em um documento, mande uma foto dele.',
+  unsupportedMedia: 'Consigo receber texto, áudio, foto e arquivo PDF. Outros tipos de documento ainda não são processados.',
   permissionDenied: 'Seu acesso permite enviar informações, mas a confirmação final precisa ser feita por uma pessoa autorizada.',
   noPending: 'Não encontrei nenhum cadastro esperando confirmação. Pode mandar a informação novamente, do jeito que lembrar.',
   clarificationCancelled: 'Tudo bem. Descartei as informações incompletas e não salvei nada.',

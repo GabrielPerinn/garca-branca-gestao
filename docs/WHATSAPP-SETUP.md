@@ -234,8 +234,23 @@ Para o sistema Garça Branca, o fluxo é **reativo** (usuário envia → sistema
 
 ## Fluxo de mensagem (resumo)
 
+### Entradas aceitas
+
+- Texto: até 4.000 caracteres por mensagem processada.
+- Áudio: formatos suportados pelo transcritor, até 25 MB.
+- Foto: JPEG, PNG ou WebP, até 5 MB.
+- Documento: PDF válido, até 50 MB. Outros formatos de documento são recusados.
+
+Ao receber uma nota, recibo, boleto ou comprovante em PDF, a Garça guarda o
+original no bucket privado `ai-evidence`, lê o texto e as imagens das páginas e
+prepara uma ou mais despesas. Valor final, fornecedor, datas, número/chave
+fiscal, vencimento, forma e situação do pagamento são preservados quando
+visíveis. O sistema não presume que uma nota está paga: pergunta o que estiver
+faltando, uma informação por vez, e só grava após a resposta e a confirmação
+explícita. A chave de acesso da NF-e impede cadastro duplicado.
+
 ```
-Usuário envia mensagem pelo WhatsApp
+Usuário envia texto, áudio, foto ou PDF pelo WhatsApp
           ↓
 Meta → POST /api/webhook/whatsapp
           ↓
@@ -243,13 +258,15 @@ Valida Content-Type, tamanho e assinatura HMAC
           ↓
 Webhook responde 200 imediatamente
           ↓ (assíncrono)
-Verifica idempotência (external_message_id)
+Verifica idempotência (external_message_id e chave fiscal quando disponível)
           ↓
 Salva em incoming_messages
           ↓
 É resposta SIM/NÃO? → Aprovação de pending_action
           ↓ (se não)
-IA interpreta mensagem (Mock ou OpenAI)
+Guarda a mídia original como evidência privada
+          ↓
+IA transcreve/lê e interpreta a mensagem
           ↓
 Cria pending_action ou occurrence
           ↓
