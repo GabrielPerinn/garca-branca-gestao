@@ -38,7 +38,7 @@ fi
 
 echo "Criando cópia lógica do banco..."
 npx supabase db dump "${dump_args[@]}" --file "$PAYLOAD/database/roles.sql" --role-only
-if [[ -z "${SUPABASE_DB_URL:-}" && -z "${SUPABASE_DB_PASSWORD:-}" ]]; then
+if [[ -z "${SUPABASE_DB_URL:-}" && -z "${SUPABASE_DB_PASSWORD:-}" && "$(uname -s)" == "Darwin" ]]; then
   # On IPv6-only direct database endpoints the CLI's local IPv4 fallback can
   # stall specifically on schema export. The versioned migrations below are
   # the tested schema recovery source in this local/manual mode.
