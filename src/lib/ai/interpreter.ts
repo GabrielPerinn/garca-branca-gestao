@@ -23,6 +23,31 @@ export type AIInputDocument = {
   filename: string
 }
 
+export type AIInterpretationProfile = 'quality' | 'low_latency'
+
+type InterpretationEnvironment = {
+  OPENAI_MODEL?: string
+  OPENAI_AUDIO_INTERPRET_MODEL?: string
+}
+
+export function resolveInterpretationSettings(
+  profile: AIInterpretationProfile,
+  environment: InterpretationEnvironment = process.env as InterpretationEnvironment,
+) {
+  if (profile === 'low_latency') {
+    return {
+      model: environment.OPENAI_AUDIO_INTERPRET_MODEL?.trim() || 'gpt-5.6-luna',
+      reasoningEffort: 'low' as const,
+      telemetryOperation: 'interpret_audio',
+    }
+  }
+  return {
+    model: environment.OPENAI_MODEL?.trim() || 'gpt-5.6',
+    reasoningEffort: 'medium' as const,
+    telemetryOperation: 'interpret_message',
+  }
+}
+
 const MUTATION_INTENTS = new Set<AIResponse['intent']>([
   'create_expense',
   'create_revenue',
@@ -308,9 +333,14 @@ Retorne APENAS o JSON do schema. Sem Markdown. Sem texto extra.`;
 // ─── OpenAI Provider ──────────────────────────────────────────────────────────
 export class OpenAIProvider implements IAIProvider {
   private context?: Parameters<typeof buildSystemPrompt>[0];
+  private profile: AIInterpretationProfile;
 
-  constructor(context?: Parameters<typeof buildSystemPrompt>[0]) {
+  constructor(
+    context?: Parameters<typeof buildSystemPrompt>[0],
+    profile: AIInterpretationProfile = 'quality',
+  ) {
     this.context = context;
+    this.profile = profile;
   }
 
   async interpret(
@@ -347,7 +377,8 @@ export class OpenAIProvider implements IAIProvider {
       })
     }
 
-    const model = process.env.OPENAI_MODEL || 'gpt-5.6';
+    const settings = resolveInterpretationSettings(this.profile)
+    const model = settings.model;
     const startedAt = Date.now();
     const response = await openai.responses.parse({
       model,
@@ -357,7 +388,7 @@ export class OpenAIProvider implements IAIProvider {
         format: zodTextFormat(AIResponseSchema, 'rural_action_plan'),
         verbosity: 'low',
       },
-      reasoning: { effort: 'medium' },
+      reasoning: { effort: settings.reasoningEffort },
       max_output_tokens: 2_500,
       store: false,
       ...(safetyIdentity ? {
@@ -368,11 +399,15 @@ export class OpenAIProvider implements IAIProvider {
     const parsed = response.output_parsed;
     if (!parsed) throw new Error("IA não retornou objeto processável.");
     await recordAIUsageEvent({
-      operation: documentFile ? 'interpret_document' : imageBase64 ? 'interpret_image' : 'interpret_message',
+      operation: documentFile ? 'interpret_document' : imageBase64 ? 'interpret_image' : settings.telemetryOperation,
       modelName: model,
       status: 'success',
       startedAt,
       usage: response.usage,
+      metadata: {
+        profile: this.profile,
+        reasoning_effort: settings.reasoningEffort,
+      },
     });
 
     return parsed;
@@ -1149,15 +1184,16 @@ export class MockAIProvider implements IAIProvider {
 // ─── Factory ──────────────────────────────────────────────────────────────────
 export function getAIProvider(
   forceProvider?: 'mock' | 'openai',
-  context?: Parameters<typeof buildSystemPrompt>[0]
+  context?: Parameters<typeof buildSystemPrompt>[0],
+  profile: AIInterpretationProfile = 'quality',
 ): IAIProvider {
   if (forceProvider === 'mock') return new MockAIProvider();
   if (forceProvider === 'openai') {
     if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY não configurada.");
-    return new OpenAIProvider(context);
+    return new OpenAIProvider(context, profile);
   }
   if (process.env.AI_PROVIDER !== 'mock' && process.env.OPENAI_API_KEY) {
-    return new OpenAIProvider(context);
+    return new OpenAIProvider(context, profile);
   }
   return new MockAIProvider();
 }
@@ -1169,12 +1205,32 @@ export async function interpretRuralMessage(
   context?: Parameters<typeof buildSystemPrompt>[0],
   safetyIdentity?: string,
   documentFile?: AIInputDocument,
+  profile: AIInterpretationProfile = 'quality',
 ): Promise<AIResponse> {
-  const provider = getAIProvider(forceProvider, context);
+  const provider = getAIProvider(forceProvider, context, profile);
   try {
     return enforceAIContract(await provider.interpret(message, imageBase64, safetyIdentity, documentFile));
   } catch (error) {
     console.error("Erro no interpretador:", error);
+    if (profile === 'low_latency' && forceProvider !== 'mock') {
+      try {
+        const fallbackStartedAt = Date.now()
+        const qualityProvider = getAIProvider(forceProvider, context, 'quality')
+        const recovered = enforceAIContract(
+          await qualityProvider.interpret(message, imageBase64, safetyIdentity, documentFile),
+        )
+        await recordAIUsageEvent({
+          operation: 'interpret_audio_fallback',
+          modelName: resolveInterpretationSettings('quality').model,
+          status: 'fallback',
+          startedAt: fallbackStartedAt,
+          metadata: { failed_profile: 'low_latency' },
+        })
+        return recovered
+      } catch (fallbackError) {
+        console.error('Erro no fallback de interpretação do áudio:', fallbackError)
+      }
+    }
     return {
       intent: 'unknown', module: 'system', action_type: 'none',
       confidence: 0, requires_confirmation: true, should_create_pending_action: false,
@@ -1200,6 +1256,7 @@ export async function completeRuralActionPlan(input: {
   followupText: string
   imageBase64?: string
   documentFile?: AIInputDocument
+  profile?: AIInterpretationProfile
   context?: Parameters<typeof buildSystemPrompt>[0]
   safetyIdentity?: string
 }): Promise<{ isRelated: boolean; plan: AIResponse }> {
@@ -1212,7 +1269,8 @@ export async function completeRuralActionPlan(input: {
     maxRetries: 2,
     timeout: input.documentFile ? 90_000 : 30_000,
   })
-  const model = process.env.OPENAI_MODEL || 'gpt-5.6'
+  const settings = resolveInterpretationSettings(input.profile ?? 'quality')
+  const model = settings.model
   const startedAt = Date.now()
   const followupContent: Array<
     | { type: 'input_text'; text: string }
@@ -1257,7 +1315,7 @@ Você receberá a mensagem original, o plano que já foi extraído e uma nova re
       format: zodTextFormat(ClarificationResultSchema, 'rural_plan_clarification'),
       verbosity: 'low',
     },
-    reasoning: { effort: 'medium' },
+    reasoning: { effort: settings.reasoningEffort },
     max_output_tokens: 3_000,
     store: false,
     ...(input.safetyIdentity ? {
@@ -1266,7 +1324,14 @@ Você receberá a mensagem original, o plano que já foi extraído e uma nova re
   })
 
   if (!response.output_parsed) throw new Error('IA não conseguiu completar o plano pendente.')
-  await recordAIUsageEvent({ operation: 'complete_action_plan', modelName: model, status: 'success', startedAt, usage: response.usage })
+  await recordAIUsageEvent({
+    operation: input.profile === 'low_latency' ? 'complete_audio_plan' : 'complete_action_plan',
+    modelName: model,
+    status: 'success',
+    startedAt,
+    usage: response.usage,
+    metadata: { profile: input.profile ?? 'quality', reasoning_effort: settings.reasoningEffort },
+  })
   return {
     isRelated: response.output_parsed.is_related,
     plan: response.output_parsed.is_related

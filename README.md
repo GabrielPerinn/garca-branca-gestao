@@ -118,6 +118,7 @@ em ações pendentes, sempre sujeitas à revisão humana antes da execução.
 | `OPENAI_API_KEY` | Não | Ativa o provedor real da OpenAI; sem chave, usa o motor local |
 | `AI_PROVIDER` | Não | `openai` ou `mock`; com chave configurada, o padrão é `openai` |
 | `OPENAI_MODEL` | Não | Modelo de interpretação estruturada; padrão `gpt-5.6` |
+| `OPENAI_AUDIO_INTERPRET_MODEL` | Não | Modelo de baixa latência usado após a transcrição; padrão `gpt-5.6-luna` |
 | `WHATSAPP_VERIFY_TOKEN` | Para WhatsApp | Validação inicial do webhook |
 | `WHATSAPP_ACCESS_TOKEN` | Para WhatsApp | Envio de respostas pela Meta |
 | `WHATSAPP_PHONE_NUMBER_ID` | Para WhatsApp | Identificador do número na Meta |

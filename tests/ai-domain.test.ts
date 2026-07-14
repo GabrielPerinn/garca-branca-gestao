@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildSystemPrompt, enforceAIContract, MockAIProvider } from '../src/lib/ai/interpreter'
+import { buildSystemPrompt, enforceAIContract, MockAIProvider, resolveInterpretationSettings } from '../src/lib/ai/interpreter'
 import type { AIResponse } from '../src/lib/validation/ai-schema'
 import {
   classifyConversationalMessage,
@@ -59,6 +59,19 @@ test('prompt declara record_inventory_entry e seus campos obrigatórios', () => 
   assert.match(prompt, /PDF de nota, recibo, boleto ou comprovante/)
   assert.match(prompt, /source_document=true/)
   assert.match(prompt, /Nunca presuma que está pago/)
+})
+
+test('áudio usa perfil de interpretação de baixa latência sem afetar o perfil de qualidade', () => {
+  assert.deepEqual(resolveInterpretationSettings('low_latency', {}), {
+    model: 'gpt-5.6-luna',
+    reasoningEffort: 'low',
+    telemetryOperation: 'interpret_audio',
+  })
+  assert.deepEqual(resolveInterpretationSettings('quality', { OPENAI_MODEL: 'gpt-5.6-sol' }), {
+    model: 'gpt-5.6-sol',
+    reasoningEffort: 'medium',
+    telemetryOperation: 'interpret_message',
+  })
 })
 
 test('documento financeiro exige dados essenciais antes da aprovação', () => {

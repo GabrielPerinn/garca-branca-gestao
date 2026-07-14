@@ -211,6 +211,7 @@ Para o sistema Garça Branca, o fluxo é **reativo** (usuário envia → sistema
 | `OPENAI_API_KEY` | Opcional | Para usar OpenAI; sem ela, usa o motor local |
 | `AI_PROVIDER` | Opcional | `openai` ou `mock`; com chave, vazio usa OpenAI |
 | `OPENAI_MODEL` | Opcional | Modelo estruturado; padrão `gpt-5.6` |
+| `OPENAI_AUDIO_INTERPRET_MODEL` | Opcional | Modelo de baixa latência para interpretar a transcrição; padrão `gpt-5.6-luna` |
 | `APP_BASE_URL` | Recomendado | URL pública do sistema |
 
 ---

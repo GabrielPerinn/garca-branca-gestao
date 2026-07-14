@@ -240,6 +240,7 @@ export async function processIncomingMessage(
         followupText: text,
         imageBase64: messageContext.imageBase64,
         documentFile: messageContext.documentFile,
+        profile: messageContext.inputModality === 'audio' ? 'low_latency' : 'quality',
         context,
         safetyIdentity: messageContext.senderUserId ?? messageContext.senderPhone,
       })
@@ -316,6 +317,7 @@ export async function processIncomingMessage(
     context,
     messageContext.senderUserId ?? messageContext.senderPhone,
     messageContext.documentFile,
+    messageContext.inputModality === 'audio' ? 'low_latency' : 'quality',
   )
 
   if (aiResult.intent === 'answer_question') {
@@ -498,6 +500,7 @@ export async function revisePendingActionFromMessage(
     followupText: text,
     imageBase64: messageContext.imageBase64,
     documentFile: messageContext.documentFile,
+    profile: messageContext.inputModality === 'audio' ? 'low_latency' : 'quality',
     safetyIdentity: messageContext.senderUserId ?? messageContext.senderPhone,
   })
   if (!completion.isRelated) {
