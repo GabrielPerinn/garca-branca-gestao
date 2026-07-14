@@ -57,7 +57,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.107.0
+          version: 2.109.1
 
       - name: Start disposable Supabase
         run: supabase start
@@ -85,7 +85,7 @@ jobs:
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
-          version: 2.107.0
+          version: 2.109.1
 
       - name: Link and Push to Supabase
         run: |
