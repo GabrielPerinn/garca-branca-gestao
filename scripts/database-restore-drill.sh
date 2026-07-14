@@ -17,7 +17,10 @@ echo "Recriando banco descartável pelas migrações..."
 npx supabase start >/dev/null
 npx supabase db reset >/dev/null
 PROJECT_ID="$(sed -n 's/^project_id = "\(.*\)"/\1/p' supabase/config.toml | head -1)"
-DB_CONTAINER="$(docker ps --filter "label=com.supabase.cli.project=$PROJECT_ID" --format '{{.Names}}' | grep '^supabase_db_' | head -1)"
+DB_CONTAINER="supabase_db_$PROJECT_ID"
+if ! docker inspect "$DB_CONTAINER" >/dev/null 2>&1; then
+  DB_CONTAINER="$(docker ps --format '{{.Names}}' | awk '/^supabase_db_/ { print; exit }')"
+fi
 [[ -n "$DB_CONTAINER" ]] || { echo "Container local do banco não encontrado." >&2; exit 1; }
 
 TABLES="$(cut -f1 "$PAYLOAD/database/table-counts.tsv" | paste -sd, -)"
