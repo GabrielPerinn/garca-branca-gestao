@@ -1,0 +1,2 @@
+-- Intencionalmente vazio.
+-- Dados reais da fazenda e usuários nunca devem ser incluídos em seeds versionados.

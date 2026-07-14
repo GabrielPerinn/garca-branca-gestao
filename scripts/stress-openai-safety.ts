@@ -70,6 +70,13 @@ async function runStressTest() {
         }
       }
 
+      if (phrase.includes('cascalho') && result.intent !== 'record_gravel_operation') {
+        throw new Error(`Operação de cascalho não foi estruturada: ${result.intent}`);
+      }
+      if (phrase.includes('limpar a área') && result.intent !== 'record_suppression_operation') {
+        throw new Error(`Operação ambiental não foi identificada: ${result.intent}`);
+      }
+
       const isCriticalAction = ['create_expense', 'record_cattle_sale', 'record_employee_payment', 'create_task'].includes(result.intent);
       if (isCriticalAction) {
         if (!result.requires_confirmation) {

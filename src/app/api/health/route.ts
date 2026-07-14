@@ -1,85 +1,74 @@
-import { NextResponse } from 'next/server';
-import { createAdminClient } from '@/lib/supabase/server';
+import { NextResponse } from 'next/server'
+import { createServiceRoleClient } from '@/lib/supabase/server'
 
-export const dynamic = 'force-dynamic';
+export const dynamic = 'force-dynamic'
+
+const DATABASE_HEALTH_TIMEOUT_MS = 5_000
+
+function hasValidAppUrl() {
+  const candidate = process.env.APP_BASE_URL
+    ?? (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : undefined)
+  if (!candidate) return process.env.NODE_ENV !== 'production'
+
+  try {
+    const url = new URL(candidate)
+    return url.protocol === 'https:' || (process.env.NODE_ENV !== 'production' && url.protocol === 'http:')
+  } catch {
+    return false
+  }
+}
 
 export async function GET() {
-  const startTime = Date.now();
-  const checks: Record<string, { ok: boolean; message: string; latency_ms?: number }> = {};
+  const startedAt = Date.now()
+  const configurationOk = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL
+      && process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+      && process.env.SUPABASE_SERVICE_ROLE_KEY
+      && hasValidAppUrl()
+  )
+  let databaseOk = false
+  let databaseLatencyMs: number | undefined
+  let dataProtection: { backup_fresh?: boolean; integrity?: { is_valid?: boolean } | null } | undefined
 
-  // 1. Variáveis de ambiente obrigatórias
-  const requiredEnv = [
-    'NEXT_PUBLIC_SUPABASE_URL',
-    'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-    'SUPABASE_SERVICE_ROLE_KEY',
-  ];
-  const missingEnv = requiredEnv.filter(k => !process.env[k]);
-  checks.env = {
-    ok: missingEnv.length === 0,
-    message: missingEnv.length === 0
-      ? 'Todas as variáveis obrigatórias configuradas'
-      : `Faltando: ${missingEnv.join(', ')}`,
-  };
-
-  // 2. Supabase connectivity
-  try {
-    const t0 = Date.now();
-    const supabase = await createAdminClient();
-    const { count, error } = await supabase
-      .from('farms')
-      .select('*', { count: 'exact', head: true });
-
-    checks.database = {
-      ok: !error,
-      message: error ? `Erro: ${error.message}` : `Conexão OK (${count ?? 0} fazendas)`,
-      latency_ms: Date.now() - t0,
-    };
-  } catch (err: any) {
-    checks.database = { ok: false, message: `Falha na conexão: ${err.message}` };
+  if (configurationOk) {
+    try {
+      const queryStartedAt = Date.now()
+      const supabase = createServiceRoleClient({ requestTimeoutMs: DATABASE_HEALTH_TIMEOUT_MS })
+      const query = supabase.from('farms').select('id', { head: true }).limit(1)
+      const timeout = new Promise<never>((_, reject) => {
+        const timer = setTimeout(() => reject(new Error('database_health_timeout')), DATABASE_HEALTH_TIMEOUT_MS)
+        timer.unref()
+      })
+      const { error } = await Promise.race([query, timeout])
+      databaseLatencyMs = Date.now() - queryStartedAt
+      databaseOk = !error
+      if (error) console.error('[Health] Banco indisponível:', error.code)
+      if (!error) {
+        const { data: protectionData, error: protectionError } = await supabase.rpc('get_data_protection_status')
+        if (!protectionError) dataProtection = protectionData as typeof dataProtection
+        else console.error('[Health] Proteção de dados indisponível:', protectionError.code)
+      }
+    } catch (error) {
+      console.error('[Health] Falha na verificação do banco:', error instanceof Error ? error.name : 'unknown')
+    }
   }
 
-  // 3. WhatsApp configurado?
-  const whatsappVars = ['WHATSAPP_VERIFY_TOKEN', 'WHATSAPP_ACCESS_TOKEN', 'WHATSAPP_PHONE_NUMBER_ID'];
-  const configuredWA = whatsappVars.filter(k => !!process.env[k]);
-  checks.whatsapp = {
-    ok: configuredWA.length === whatsappVars.length,
-    message: configuredWA.length === 0
-      ? 'Não configurado (webhook funciona, mas não envia respostas)'
-      : configuredWA.length === whatsappVars.length
-        ? 'Totalmente configurado ✓'
-        : `Parcialmente configurado: ${configuredWA.join(', ')}`,
-  };
-
-  // 4. OpenAI configurado?
-  checks.openai = {
-    ok: true, // Não é obrigatório (usa mock)
-    message: process.env.OPENAI_API_KEY
-      ? `Configurada (provider: ${process.env.AI_PROVIDER || 'auto'})`
-      : 'Não configurada — usando Mock AI (OK para testes)',
-  };
-
-  // 5. Webhook URL
-  const appUrl = process.env.APP_BASE_URL || process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : null;
-  checks.webhook_url = {
-    ok: !!appUrl,
-    message: appUrl
-      ? `${appUrl}/api/webhook/whatsapp`
-      : 'APP_BASE_URL não configurada (configure após deploy)',
-  };
-
-  const allOk = Object.values(checks).every(c => c.ok);
-  const totalLatency = Date.now() - startTime;
-
+  const healthy = configurationOk && databaseOk
   return NextResponse.json({
-    status: allOk ? 'healthy' : 'degraded',
+    status: healthy ? 'healthy' : 'degraded',
     timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    latency_ms: totalLatency,
-    checks,
+    latency_ms: Date.now() - startedAt,
+    checks: {
+      configuration: { ok: configurationOk },
+      database: { ok: databaseOk, ...(databaseLatencyMs === undefined ? {} : { latency_ms: databaseLatencyMs }) },
+      data_protection: {
+        ok: dataProtection?.backup_fresh === true && dataProtection?.integrity?.is_valid === true,
+        backup_fresh: dataProtection?.backup_fresh === true,
+        integrity_valid: dataProtection?.integrity?.is_valid === true,
+      },
+    },
   }, {
-    status: allOk ? 200 : 207,
-    headers: { 'Cache-Control': 'no-store' },
-  });
+    status: healthy ? 200 : 503,
+    headers: { 'Cache-Control': 'no-store, max-age=0' },
+  })
 }

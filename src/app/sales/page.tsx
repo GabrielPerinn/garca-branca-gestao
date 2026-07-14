@@ -5,7 +5,16 @@ export const dynamic = 'force-dynamic';
 
 export default async function SalesPage() {
   const supabase = await createAdminClient();
-  // cattle_sales usa negotiation_date, não sale_date
-  const { data: sales, error } = await supabase.from('cattle_sales').select('*').neq('status', 'deleted').order('negotiation_date', { ascending: false });
-  return <SalesClientPage sales={sales || []} dbError={error?.message} />;
+  const [salesResult, lotsResult] = await Promise.all([
+    supabase.from('cattle_sales').select('*').neq('status', 'deleted').order('negotiation_date', { ascending: false }),
+    supabase.from('cattle_lots').select('id, name, current_quantity').eq('status', 'active').order('name', { ascending: true }),
+  ]);
+
+  return (
+    <SalesClientPage
+      sales={salesResult.data || []}
+      lots={lotsResult.data || []}
+      dbError={salesResult.error?.message || lotsResult.error?.message}
+    />
+  );
 }

@@ -1,14 +1,26 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/server'
+import { softDeleteRecord } from '@/lib/data/mutations'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
+import { dateString, parseFormData, parseRecordId, positiveNumber, requiredText } from '@/lib/validation/forms'
+
+const gravelSchema = z.object({
+  origin_location: requiredText('Localização', 500),
+  estimated_volume: positiveNumber('Volume'),
+  date: dateString('Data'),
+})
 
 export async function createGravel(formData: FormData) {
-  const supabase = await createAdminClient()
+  const supabase = await createAdminClient({ permission: 'operations.write' })
+  const input = parseFormData(gravelSchema, formData)
   const data = {
-    location_description: formData.get('location') as string,
-    volume_extracted: parseFloat(formData.get('volume') as string),
-    operation_date: formData.get('date') as string,
+    origin_location: input.origin_location,
+    estimated_volume: input.estimated_volume,
+    operation_date: input.date,
+    operation_type: 'extraction',
+    status: 'active',
   }
   const { error } = await supabase.from('gravel_operations').insert(data)
   if (error) throw new Error(error.message)
@@ -17,9 +29,9 @@ export async function createGravel(formData: FormData) {
 }
 
 export async function deleteGravel(id: string) {
-  const supabase = await createAdminClient()
-  const { error } = await supabase.from('gravel_operations').update({ status: 'deleted' }).eq('id', id)
-  if (error) throw new Error(error.message)
+  const supabase = await createAdminClient({ permission: 'operations.write' })
+  const recordId = parseRecordId(id)
+  await softDeleteRecord(supabase, 'gravel_operations', recordId, 'Operação de cascalho')
   revalidatePath('/gravel-operations')
   return { success: true }
 }

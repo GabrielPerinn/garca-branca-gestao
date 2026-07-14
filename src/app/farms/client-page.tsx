@@ -1,116 +1,146 @@
 'use client'
 
-import { useState } from "react";
-import { createFarm, deleteFarm } from "./actions";
-import { Modal } from "@/components/ui/Modal";
-import { EmptyState } from "@/components/ui/EmptyState";
-import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
-import { StatusBadge } from "@/components/ui/StatusBadge";
-import { Tractor, Plus, MapPin } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from 'next/link'
+import { ArrowRight, Building2, Map as MapIcon, MapPin, Tractor } from 'lucide-react'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { InlineFeedback } from '@/components/ui/InlineFeedback'
+import { StatusBadge } from '@/components/ui/StatusBadge'
 
-export function FarmsClientPage({ farms, dbError }: any) {
-  const [showModal, setShowModal] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const router = useRouter();
+type OperationRow = {
+  id: string
+  name: string
+  location_description?: string | null
+  municipality?: string | null
+  state_code?: string | null
+  total_area_ha?: number | string | null
+  productive_area_ha?: number | string | null
+  primary_activity?: string | null
+  setup_completed_at?: string | null
+}
 
-  async function handleCreate(fd: FormData) {
-    setLoading(true);
-    try { await createFarm(fd); setShowModal(false); router.refresh(); }
-    catch (e: any) { alert(e.message); }
-    finally { setLoading(false); }
-  }
+type PropertyRow = {
+  id: string
+  name: string
+  tenure_type: string
+  total_area_ha: number | string
+  usable_area_ha?: number | string | null
+  municipality?: string | null
+  state_code?: string | null
+  property_registration?: string | null
+  car_code?: string | null
+  ccir_code?: string | null
+  georeferencing_status?: string | null
+}
 
-  async function handleDelete(id: string) {
-    try { await deleteFarm(id); router.refresh(); }
-    catch (e: any) { alert(e.message); }
+type PastureRow = { id: string; land_parcel_id?: string | null }
+
+const activityLabels: Record<string, string> = {
+  beef_cattle: 'Pecuária de corte',
+  dairy_cattle: 'Pecuária leiteira',
+  mixed_cattle: 'Pecuária mista',
+  other: 'Outra atividade pecuária',
+}
+
+const tenureLabels: Record<string, string> = {
+  owned: 'Própria', leased_in: 'Arrendada para uso', leased_out: 'Cedida em arrendamento',
+  partnership: 'Parceria rural', commodatum: 'Comodato', other: 'Outro vínculo',
+}
+
+function hectares(value: number | string | null | undefined) {
+  return value === null || value === undefined
+    ? 'Não informada'
+    : `${Number(value).toLocaleString('pt-BR', { maximumFractionDigits: 2 })} ha`
+}
+
+export function FarmsClientPage({ operation, properties, pastures, dbError }: {
+  operation: OperationRow | null
+  properties: PropertyRow[]
+  pastures: PastureRow[]
+  dbError?: string | null
+}) {
+  const pastureCount = new Map<string, number>()
+  for (const pasture of pastures) {
+    if (pasture.land_parcel_id) pastureCount.set(pasture.land_parcel_id, (pastureCount.get(pasture.land_parcel_id) ?? 0) + 1)
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="app-page">
+      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Fazendas</h1>
-          <p className="text-muted-foreground mt-1">{farms.length} fazenda{farms.length !== 1 ? 's' : ''} cadastrada{farms.length !== 1 ? 's' : ''}</p>
+          <p className="app-kicker">Cadastro mestre</p>
+          <h1 className="mt-1 text-[1.75rem] font-semibold tracking-[-0.025em] text-foreground">Operação e propriedades</h1>
+          <p className="mt-1 max-w-3xl text-sm leading-6 text-muted-foreground">Uma visão consolidada da pecuária, formada por todas as fazendas físicas utilizadas pelo rebanho.</p>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:bg-primary/90 transition-colors"
-        >
-          <Plus className="h-4 w-4" /> Nova Fazenda
-        </button>
+        <Link href="/setup" className="app-button-primary">
+          {operation ? 'Revisar base' : 'Implantar operação'}
+          <ArrowRight className="h-4 w-4" aria-hidden="true" />
+        </Link>
       </div>
 
-      {dbError && (
-        <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm">{dbError}</div>
-      )}
+      <InlineFeedback kind="error" message={dbError} />
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
-        {farms.length === 0 ? (
+      {!operation ? (
+        <div className="app-panel overflow-hidden">
           <EmptyState
             icon={<Tractor className="h-12 w-12" />}
-            title="Nenhuma fazenda cadastrada"
-            description="Cadastre a primeira fazenda para começar a organizar seus dados."
-            action={
-              <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:bg-primary/90 transition-colors">
-                <Plus className="h-4 w-4" /> Cadastrar Fazenda
-              </button>
-            }
+            title="A operação pecuária ainda não foi implantada"
+            description="Cadastre a operação consolidada, cada propriedade real, seus pastos e os saldos iniciais do rebanho."
+            action={<Link href="/setup" className="app-button-primary">Configurar base <ArrowRight className="h-4 w-4" /></Link>}
           />
-        ) : (
-          <div className="divide-y divide-border">
-            {farms.map((f: any) => (
-              <div key={f.id} className="flex items-center justify-between p-5 hover:bg-muted/30 transition-colors">
-                <div className="flex items-center gap-4">
-                  <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center">
-                    <Tractor className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground">{f.name}</p>
-                    {f.location_description && (
-                      <p className="text-sm text-muted-foreground flex items-center gap-1 mt-0.5">
-                        <MapPin className="h-3 w-3" /> {f.location_description}
-                      </p>
-                    )}
-                    {f.notes && <p className="text-xs text-muted-foreground mt-0.5">{f.notes}</p>}
-                  </div>
-                </div>
-                <div className="flex items-center gap-4">
-                  <StatusBadge status={f.status || 'active'} />
-                  <ConfirmDeleteButton onConfirm={() => handleDelete(f.id)} />
+        </div>
+      ) : (
+        <>
+          <section className="app-panel p-5 sm:p-6" aria-labelledby="operation-title">
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div className="flex min-w-0 items-start gap-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-primary"><Building2 className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-xs font-semibold uppercase tracking-[0.1em] text-muted-foreground">Operação consolidada</p>
+                  <h2 id="operation-title" className="mt-1 text-lg font-semibold text-foreground">{operation.name}</h2>
+                  {(operation.municipality || operation.location_description) && <p className="mt-1 flex items-start gap-1.5 text-sm text-muted-foreground"><MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0" />{operation.municipality ? `${operation.municipality}${operation.state_code ? ` - ${operation.state_code}` : ''}` : operation.location_description}</p>}
                 </div>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
+              <StatusBadge status={operation.setup_completed_at ? 'active' : 'pending'} />
+            </div>
+            <dl className="mt-6 grid gap-4 border-t border-border pt-5 sm:grid-cols-2 xl:grid-cols-5">
+              <div><dt className="text-xs text-muted-foreground">Propriedades</dt><dd className="mt-1 text-sm font-semibold">{properties.length}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Pastos</dt><dd className="mt-1 text-sm font-semibold">{pastures.length}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Área total consolidada</dt><dd className="mt-1 text-sm font-semibold">{hectares(operation.total_area_ha)}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Área produtiva</dt><dd className="mt-1 text-sm font-semibold">{hectares(operation.productive_area_ha)}</dd></div>
+              <div><dt className="text-xs text-muted-foreground">Atividade</dt><dd className="mt-1 text-sm font-semibold">{activityLabels[operation.primary_activity ?? ''] ?? 'Pecuária'}</dd></div>
+            </dl>
+          </section>
 
-      {showModal && (
-        <Modal title="Nova Fazenda" onClose={() => setShowModal(false)}>
-          <form action={handleCreate} className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Nome da Fazenda *</label>
-              <input name="name" placeholder="Fazenda Garça Branca" required className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+          <section className="mt-6" aria-labelledby="properties-title">
+            <div className="mb-3 flex items-end justify-between gap-4">
+              <div><h2 id="properties-title" className="text-base font-semibold text-foreground">Propriedades físicas</h2><p className="mt-1 text-xs text-muted-foreground">Cada fazenda possui documentação, área e pastos próprios, mas participa da mesma análise operacional.</p></div>
+              <span className="shrink-0 text-xs font-semibold text-muted-foreground">{properties.length} cadastrada{properties.length === 1 ? '' : 's'}</span>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Localização / Endereço</label>
-              <input name="location_description" placeholder="Rodovia MT-060, Km 12, Cáceres - MT" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Observações</label>
-              <textarea name="notes" rows={3} placeholder="Informações adicionais sobre a fazenda..." className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
-            </div>
-            <div className="flex gap-3 pt-2">
-              <button type="submit" disabled={loading} className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
-                {loading ? 'Salvando...' : 'Salvar Fazenda'}
-              </button>
-              <button type="button" onClick={() => setShowModal(false)} className="px-6 py-2.5 rounded-xl border border-border text-foreground hover:bg-muted transition-colors">
-                Cancelar
-              </button>
-            </div>
-          </form>
-        </Modal>
+            {properties.length === 0 ? (
+              <div className="app-panel overflow-hidden"><EmptyState icon={<MapIcon className="h-10 w-10" />} title="Nenhuma propriedade cadastrada" description="Cadastre a sede e as demais fazendas como propriedades independentes." action={<Link href="/setup" className="app-button-primary">Cadastrar propriedades <ArrowRight className="h-4 w-4" /></Link>} /></div>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {properties.map(property => {
+                  const documents = [property.property_registration && 'Matrícula', property.car_code && 'CAR', property.ccir_code && 'CCIR', property.georeferencing_status === 'certified' && 'Georreferenciada'].filter(Boolean)
+                  return <article key={property.id} className="app-panel p-5">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0"><h3 className="truncate text-base font-semibold text-foreground">{property.name}</h3><p className="mt-1 text-xs text-muted-foreground">{tenureLabels[property.tenure_type] ?? property.tenure_type}</p></div>
+                      <span className="rounded-lg bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">{pastureCount.get(property.id) ?? 0} pasto{(pastureCount.get(property.id) ?? 0) === 1 ? '' : 's'}</span>
+                    </div>
+                    {(property.municipality || property.state_code) && <p className="mt-4 flex items-center gap-1.5 text-sm text-muted-foreground"><MapPin className="h-3.5 w-3.5" />{property.municipality || 'Município não informado'}{property.state_code ? ` / ${property.state_code}` : ''}</p>}
+                    <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-border pt-4"><div><dt className="text-xs text-muted-foreground">Área total</dt><dd className="mt-1 text-sm font-semibold">{hectares(property.total_area_ha)}</dd></div><div><dt className="text-xs text-muted-foreground">Área utilizável</dt><dd className="mt-1 text-sm font-semibold">{hectares(property.usable_area_ha)}</dd></div></dl>
+                    <div className="mt-4 flex flex-wrap gap-2">{documents.length > 0 ? documents.map(document => <span key={String(document)} className="rounded-md border border-border px-2 py-1 text-[11px] font-medium text-muted-foreground">{document}</span>) : <span className="text-xs text-amber-700">Documentação ainda não informada</span>}</div>
+                  </article>
+                })}
+              </div>
+            )}
+          </section>
+
+          <div className="mt-6 rounded-xl border border-primary/20 bg-primary/[0.04] p-4 text-sm leading-6 text-foreground">
+            A operação é o nível consolidado de gestão. Propriedades são as fazendas reais; pastos ficam dentro delas. A IA pode comparar unidades separadamente e também responder pelo resultado do conjunto.
+          </div>
+        </>
       )}
     </div>
-  );
+  )
 }

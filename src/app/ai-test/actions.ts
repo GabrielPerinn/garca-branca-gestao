@@ -1,26 +1,32 @@
 'use server'
 
-import { processIncomingMessage } from "@/lib/ai/message-processor";
+import { z } from 'zod'
+import { processIncomingMessage } from '@/lib/ai/message-processor'
+import { requirePermission } from '@/lib/supabase/server'
+
+const messageSchema = z.string().trim().min(1, 'Digite uma mensagem.').max(4_000, 'Mensagem muito longa.')
+const providerSchema = z.enum(['mock', 'openai'])
 
 export async function processMessage(text: string, forceProvider: 'mock' | 'openai' = 'mock') {
+  const { profile } = await requirePermission('operations.write')
+
   try {
-    const reply = await processIncomingMessage(text, '5511999999999', undefined, forceProvider);
-    
+    const validatedText = messageSchema.parse(text)
+    const provider = providerSchema.parse(forceProvider)
+    const reply = await processIncomingMessage(validatedText, {
+      forceProvider: provider,
+      senderUserId: profile.id,
+    })
+
     return {
       reply,
-      ai_data: 'A ação foi processada e enviada para a fila (ver tela de Aprovações/Ocorrências)'
+      ai_data: 'A ação foi processada e enviada para a fila (ver tela de Aprovações/Ocorrências)',
     }
-  } catch (error: any) {
-    if (error.message?.includes('SUPABASE_SERVICE_ROLE_KEY')) {
-      return {
-        reply: '⚠️ Erro de Segurança (RLS): A chave SUPABASE_SERVICE_ROLE_KEY não está configurada no seu arquivo .env.local. O banco de dados bloqueou a inserção dessa mensagem. Por favor, adicione a chave para que a IA consiga salvar as ocorrências.',
-        ai_data: 'Acesso Negado'
-      }
-    }
-    
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Falha ao processar mensagem.'
     return {
-      reply: '❌ Ocorreu um erro no servidor: ' + error.message,
-      ai_data: 'Erro Crítico'
+      reply: `❌ Ocorreu um erro no servidor: ${message}`,
+      ai_data: 'Erro Crítico',
     }
   }
 }

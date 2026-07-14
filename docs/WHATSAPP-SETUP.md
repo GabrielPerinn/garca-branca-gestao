@@ -101,6 +101,33 @@ WHATSAPP_VERIFY_TOKEN=a1b2c3d4e5f6789abcdef123456789abcdef
 WHATSAPP_APP_SECRET=abc123def456...
 ```
 
+Em produção, essa variável é obrigatória: o endpoint rejeita requisições sem uma
+assinatura HMAC válida.
+
+### Autorizar os remetentes
+
+Por segurança, somente números autorizados são processados. Cadastre o telefone
+em `users_profiles.phone_number` com o perfil ativo ou informe uma lista em formato
+internacional, separada por vírgulas:
+
+```dotenv
+WHATSAPP_ALLOWED_PHONES=5569999999999,5569888888888
+```
+
+### Remetente do smoke test
+
+O smoke simula uma mensagem recebida e, portanto, precisa usar um telefone que o
+webhook reconheça como autorizado. Defina-o explicitamente no `.env.local`:
+
+```dotenv
+WHATSAPP_SMOKE_TEST_PHONE=5569999999999
+```
+
+Se essa variável estiver vazia, o script usa o primeiro número de
+`WHATSAPP_ALLOWED_PHONES`. Um número informado apenas em
+`WHATSAPP_SMOKE_TEST_PHONE` ainda precisa existir na allowlist ou pertencer a um
+perfil ativo em `users_profiles.phone_number`.
+
 ---
 
 ## Passo 4 — Configurar o Webhook
@@ -120,7 +147,9 @@ WHATSAPP_APP_SECRET=abc123def456...
 6. Clique em **"Salvar"**
 
 > ⚠️ **O webhook precisa estar publicado ANTES de clicar em "Verificar".**
-> Rode o smoke test local primeiro: `npm run smoke:webhook`
+> Rode `npm run smoke:webhook` somente contra um ambiente local ou de staging. O
+> script grava dados, assina cada POST com `WHATSAPP_APP_SECRET` e pode enviar uma
+> resposta real quando as credenciais de envio da Meta estiverem configuradas.
 
 ---
 
@@ -174,10 +203,14 @@ Para o sistema Garça Branca, o fluxo é **reativo** (usuário envia → sistema
 | `WHATSAPP_VERIFY_TOKEN` | ✅ Sim | Token criado por você para verificação |
 | `WHATSAPP_ACCESS_TOKEN` | ✅ Sim | Token de acesso da Meta |
 | `WHATSAPP_PHONE_NUMBER_ID` | ✅ Sim | ID do número no Meta |
+| `WHATSAPP_GRAPH_API_VERSION` | Opcional | Versão da Graph API no envio; padrão `v23.0` |
 | `WHATSAPP_BUSINESS_ACCOUNT_ID` | Opcional | ID da conta business |
-| `WHATSAPP_APP_SECRET` | Recomendado | Para validar assinatura HMAC |
-| `OPENAI_API_KEY` | Opcional | Para usar IA real (sem ele, usa Mock) |
-| `AI_PROVIDER` | Opcional | `openai` ou deixar vazio para mock |
+| `WHATSAPP_APP_SECRET` | ✅ Sim em produção | Valida a assinatura HMAC da Meta |
+| `WHATSAPP_ALLOWED_PHONES` | Condicional | Números autorizados quando não estão em `users_profiles` |
+| `WHATSAPP_SMOKE_TEST_PHONE` | Somente no smoke | Remetente autorizado usado no teste; fallback para o primeiro número da allowlist |
+| `OPENAI_API_KEY` | Opcional | Para usar OpenAI; sem ela, usa o motor local |
+| `AI_PROVIDER` | Opcional | `openai` ou `mock`; com chave, vazio usa OpenAI |
+| `OPENAI_MODEL` | Opcional | Modelo estruturado; padrão `gpt-5.6` |
 | `APP_BASE_URL` | Recomendado | URL pública do sistema |
 
 ---
@@ -186,6 +219,8 @@ Para o sistema Garça Branca, o fluxo é **reativo** (usuário envia → sistema
 
 - [ ] App publicado na Vercel com URL HTTPS
 - [ ] Todas as variáveis configuradas no painel da Vercel
+- [ ] Telefones autorizados em `users_profiles` ou `WHATSAPP_ALLOWED_PHONES`
+- [ ] `WHATSAPP_SMOKE_TEST_PHONE` aponta para um desses telefones autorizados
 - [ ] `GET /api/health` retornando `status: healthy`
 - [ ] `npm run smoke:webhook` passando com 0 falhas
 - [ ] Webhook verificado no painel da Meta (✅ verde)
@@ -204,6 +239,8 @@ Usuário envia mensagem pelo WhatsApp
           ↓
 Meta → POST /api/webhook/whatsapp
           ↓
+Valida Content-Type, tamanho e assinatura HMAC
+          ↓
 Webhook responde 200 imediatamente
           ↓ (assíncrono)
 Verifica idempotência (external_message_id)
@@ -218,3 +255,7 @@ Cria pending_action ou occurrence
           ↓
 Envia resposta pelo WhatsApp Cloud API
 ```
+
+O smoke não executa `DELETE` físico. Ações pendentes de teste são descartadas,
+ocorrências são arquivadas e a `incoming_message` é anonimizada, mas seu
+identificador permanece retido para idempotência e auditoria.

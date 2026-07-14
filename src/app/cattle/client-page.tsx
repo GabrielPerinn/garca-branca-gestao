@@ -8,35 +8,58 @@ import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Activity, Plus } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { InlineFeedback } from "@/components/ui/InlineFeedback";
 
 export function CattleClientPage({ lots, dbError }: any) {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [feedback, setFeedback] = useState<{ kind: 'error' | 'success'; message: string } | null>(null);
   const router = useRouter();
   const totalHeads = lots.reduce((acc: number, l: any) => acc + Number(l.current_quantity || 0), 0);
 
+  function openModal() {
+    setFormError(null);
+    setShowModal(true);
+  }
+
   async function handleCreate(fd: FormData) {
     setLoading(true);
-    try { await createCattleLot(fd); setShowModal(false); router.refresh(); }
-    catch (e: any) { alert(e.message); }
+    setFormError(null);
+    try {
+      await createCattleLot(fd);
+      setShowModal(false);
+      setFeedback({ kind: 'success', message: 'Lote cadastrado com sucesso.' });
+      router.refresh();
+    }
+    catch (caught) {
+      setFormError(caught instanceof Error ? caught.message : 'Não foi possível cadastrar o lote.');
+    }
     finally { setLoading(false); }
   }
 
   async function handleDelete(id: string) {
-    try { await deleteCattleLot(id); router.refresh(); }
-    catch (e: any) { alert(e.message); }
+    try {
+      await deleteCattleLot(id);
+      setFeedback({ kind: 'success', message: 'Lote excluído.' });
+      router.refresh();
+    }
+    catch (caught) {
+      setFeedback({ kind: 'error', message: caught instanceof Error ? caught.message : 'Não foi possível excluir o lote.' });
+    }
   }
 
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="app-page">
+      <div className="flex flex-col gap-4 border-b border-border pb-5 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Gado / Lotes</h1>
+          <h1 className="text-[1.75rem] font-semibold tracking-[-0.025em] text-foreground">Gado / Lotes</h1>
           <p className="text-muted-foreground mt-1">{lots.length} lote{lots.length !== 1 ? 's' : ''} — {totalHeads} cabeças no total</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:bg-primary/90 transition-colors"
+          type="button"
+          onClick={openModal}
+          className="app-button-primary"
         >
           <Plus className="h-4 w-4" /> Novo Lote
         </button>
@@ -45,21 +68,24 @@ export function CattleClientPage({ lots, dbError }: any) {
       {dbError && (
         <div className="p-4 bg-destructive/10 border border-destructive/30 rounded-xl text-destructive text-sm">{dbError}</div>
       )}
+      <InlineFeedback kind={feedback?.kind} message={feedback?.message} />
 
-      <div className="bg-card rounded-2xl border border-border overflow-hidden shadow-sm">
+      <div className="app-panel overflow-hidden">
         {lots.length === 0 ? (
           <EmptyState
             icon={<Activity className="h-12 w-12" />}
             title="Nenhum lote cadastrado"
             description="Cadastre os lotes de gado para controle de rebanho."
             action={
-              <button onClick={() => setShowModal(true)} className="flex items-center gap-2 bg-primary text-primary-foreground px-5 py-2.5 rounded-xl font-medium hover:bg-primary/90 transition-colors">
+              <button type="button" onClick={openModal} className="app-button-primary">
                 <Plus className="h-4 w-4" /> Cadastrar Lote
               </button>
             }
           />
         ) : (
-          <table className="w-full">
+          <div className="overflow-x-auto">
+          <table className="app-table min-w-[820px]">
+            <caption className="sr-only">Lotes de gado cadastrados</caption>
             <thead>
               <tr className="border-b border-border bg-muted/50">
                 <th className="text-left p-4 text-sm font-medium text-muted-foreground">Lote</th>
@@ -83,20 +109,22 @@ export function CattleClientPage({ lots, dbError }: any) {
               ))}
             </tbody>
           </table>
+          </div>
         )}
       </div>
 
       {showModal && (
         <Modal title="Novo Lote de Gado" onClose={() => setShowModal(false)}>
           <form action={handleCreate} className="space-y-4">
+            <InlineFeedback kind="error" message={formError} />
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Nome do Lote *</label>
-              <input name="name" placeholder="Lote Boi Gordo 2024, Matrizes..." required className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <label htmlFor="cattle-lot-name" className="block text-sm font-medium text-foreground mb-1.5">Nome do Lote *</label>
+              <input id="cattle-lot-name" name="name" placeholder="Lote Boi Gordo 2024, Matrizes..." required className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Categoria</label>
-                <select name="category" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <label htmlFor="cattle-lot-category" className="block text-sm font-medium text-foreground mb-1.5">Categoria</label>
+                <select id="cattle-lot-category" name="category" className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm focus:outline-none focus:ring-2 focus:ring-primary/50">
                   <option value="">Selecione...</option>
                   <option value="Boi Gordo">Boi Gordo</option>
                   <option value="Novilho">Novilho</option>
@@ -108,23 +136,23 @@ export function CattleClientPage({ lots, dbError }: any) {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-foreground mb-1.5">Quantidade *</label>
-                <input name="current_quantity" type="number" min="0" placeholder="0" required className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+                <label htmlFor="cattle-lot-quantity" className="block text-sm font-medium text-foreground mb-1.5">Quantidade *</label>
+                <input id="cattle-lot-quantity" name="current_quantity" type="number" min="0" placeholder="0" required className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Proprietário</label>
-              <input name="owner" placeholder="Nome do proprietário" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <label htmlFor="cattle-lot-owner" className="block text-sm font-medium text-foreground mb-1.5">Proprietário</label>
+              <input id="cattle-lot-owner" name="owner" placeholder="Nome do proprietário" className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Origem</label>
-              <input name="origin" placeholder="Onde o gado veio" className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
+              <label htmlFor="cattle-lot-origin" className="block text-sm font-medium text-foreground mb-1.5">Origem</label>
+              <input id="cattle-lot-origin" name="origin" placeholder="Onde o gado veio" className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-foreground mb-1.5">Observações</label>
-              <textarea name="notes" rows={2} className="w-full bg-background border border-border rounded-xl px-4 py-2.5 text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
+              <label htmlFor="cattle-lot-notes" className="block text-sm font-medium text-foreground mb-1.5">Observações</label>
+              <textarea id="cattle-lot-notes" name="notes" rows={2} className="w-full min-h-10 rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none" />
             </div>
-            <div className="flex gap-3 pt-2">
+            <div className="flex flex-col-reverse gap-3 pt-2 sm:flex-row">
               <button type="submit" disabled={loading} className="flex-1 bg-primary text-primary-foreground py-2.5 rounded-xl font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
                 {loading ? 'Salvando...' : 'Salvar Lote'}
               </button>

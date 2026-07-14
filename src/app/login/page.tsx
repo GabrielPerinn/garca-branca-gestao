@@ -1,111 +1,177 @@
-'use client'
+'use client';
 
-import { useSearchParams } from 'next/navigation'
-import { login } from './actions'
-import { Suspense } from 'react'
+import { Suspense } from 'react';
+import { useFormStatus } from 'react-dom';
+import { useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { ArrowRight, CheckCircle2, Loader2, ShieldCheck } from 'lucide-react';
+import { login } from './actions';
 
-function LoginForm() {
-  const searchParams = useSearchParams()
-  const errorMsg = searchParams.get('error')
+const errorMessages: Record<string, string> = {
+  invalid: 'Preencha um e-mail válido e informe sua senha.',
+  credentials: 'E-mail ou senha incorretos. Verifique suas credenciais.',
+  session: 'Sua sessão expirou. Entre novamente para continuar.',
+  inactive: 'Seu acesso ainda não foi liberado ou foi desativado. Fale com o administrador.',
+  service: 'O serviço de autenticação está temporariamente indisponível. Tente novamente em alguns instantes.',
+  'recovery-link': 'O link de recuperação é inválido ou expirou. Solicite um novo link.',
+};
+
+const successMessages: Record<string, string> = {
+  'password-reset': 'Senha atualizada com sucesso. Entre novamente com sua nova senha.',
+};
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-background p-4">
-      {/* Background gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-background pointer-events-none" />
+    <button
+      type="submit"
+      disabled={pending}
+      className="group flex min-h-11 w-full items-center justify-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-sm transition-colors hover:bg-primary/90 disabled:cursor-wait disabled:opacity-70"
+    >
+      {pending ? (
+        <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> Entrando...</>
+      ) : (
+        <>Entrar no sistema <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden="true" /></>
+      )}
+    </button>
+  );
+}
 
-      <div className="relative w-full max-w-md">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <div className="mx-auto h-16 w-16 rounded-2xl bg-primary flex items-center justify-center text-primary-foreground font-bold text-2xl mb-4 shadow-2xl shadow-primary/40">
-            GB
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const errorCode = searchParams.get('error') || '';
+  const errorMessage = errorMessages[errorCode];
+  const successCode = searchParams.get('success') || '';
+  const successMessage = successMessages[successCode];
+
+  return (
+    <main className="grid min-h-dvh bg-card lg:grid-cols-[minmax(0,0.82fr)_minmax(520px,1.18fr)]">
+      <section className="relative hidden overflow-hidden bg-[#162d24] px-12 py-10 text-white lg:flex lg:flex-col lg:justify-between xl:px-16 xl:py-12">
+        <div className="relative flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-lg border border-white/15 bg-white/10 text-xs font-bold tracking-wide">GB</span>
+          <div>
+            <p className="text-sm font-semibold tracking-tight">Garça Branca</p>
+            <p className="text-[11px] text-white/45">Gestão da operação rural</p>
           </div>
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Garça Branca
-          </h1>
-          <p className="mt-2 text-muted-foreground">
-            Sistema de Gestão Rural
-          </p>
         </div>
 
-        {/* Card */}
-        <div className="bg-card border border-border rounded-2xl shadow-2xl p-8 space-y-6">
-          <div>
-            <h2 className="text-xl font-semibold text-foreground">Acesso ao sistema</h2>
-            <p className="text-sm text-muted-foreground mt-1">Entre com suas credenciais para continuar</p>
+        <div className="relative max-w-lg py-16">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-300">Plataforma de gestão</p>
+          <h1 className="mt-4 text-[2.6rem] font-semibold leading-[1.08] tracking-[-0.04em] xl:text-[3.15rem]">
+            Informação confiável para conduzir a operação.
+          </h1>
+          <p className="mt-5 max-w-md text-[15px] leading-7 text-white/55">
+            Controle financeiro, rebanho, equipe e atividades de campo em um ambiente único, rastreável e seguro.
+          </p>
+
+          <div className="mt-9 space-y-3 border-t border-white/10 pt-6 text-sm text-white/65">
+            {['Indicadores consolidados da fazenda', 'Histórico de alterações e aprovações', 'Acesso restrito por usuário'].map((item) => (
+              <div key={item} className="flex items-center gap-3">
+                <CheckCircle2 className="h-4 w-4 text-emerald-300" aria-hidden="true" />
+                <span>{item}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative flex items-center justify-between border-t border-white/10 pt-5 text-[11px] text-white/35">
+          <span>Ambiente privado</span><span>Garça Branca</span>
+        </div>
+      </section>
+
+      <section className="flex min-h-dvh items-center justify-center border-l border-border bg-background px-4 py-10 sm:px-8">
+        <div className="w-full max-w-[420px]">
+          <div className="mb-8 lg:hidden">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-[#162d24] text-xs font-bold text-white">GB</span>
+              <div>
+                <p className="font-bold tracking-tight text-foreground">Garça Branca</p>
+                <p className="text-xs text-muted-foreground">Gestão da operação rural</p>
+              </div>
+            </div>
           </div>
 
-          {errorMsg && (
-            <div className="flex items-start gap-3 p-4 bg-destructive/10 border border-destructive/30 rounded-xl text-sm text-destructive">
-              <svg className="h-4 w-4 mt-0.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.268 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              <div>
-                <p className="font-medium">Falha no acesso</p>
-                <p className="opacity-80 mt-0.5">
-                  {decodeURIComponent(errorMsg).includes('Invalid login') 
-                    ? 'E-mail ou senha incorretos. Verifique suas credenciais.' 
-                    : decodeURIComponent(errorMsg)}
-                </p>
-              </div>
+          <div className="mb-7">
+            <span className="app-kicker">Acesso ao sistema</span>
+            <h2 className="mt-2 text-[2rem] font-semibold tracking-[-0.035em] text-foreground">Entrar na operação</h2>
+            <p className="mt-2 text-sm leading-6 text-muted-foreground">Utilize as credenciais fornecidas pelo administrador.</p>
+          </div>
+
+          {errorMessage && (
+            <div role="alert" className="mb-5 rounded-xl border border-destructive/25 bg-destructive/[0.06] px-4 py-3 text-sm text-destructive">
+              <p className="font-semibold">Não foi possível entrar</p>
+              <p className="mt-0.5 text-destructive/85">{errorMessage}</p>
+            </div>
+          )}
+
+          {successMessage && (
+            <div role="status" className="mb-5 flex gap-3 rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-3 text-sm text-emerald-900">
+              <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+              <p>{successMessage}</p>
             </div>
           )}
 
           <form action={login} className="space-y-5">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-foreground mb-1.5">
-                E-mail
-              </label>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-foreground">E-mail</label>
               <input
                 id="email"
                 name="email"
                 type="email"
                 required
                 autoComplete="email"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-                placeholder="admin@garcabranca.com"
+                inputMode="email"
+                className="w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="seuemail@exemplo.com"
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-foreground mb-1.5">
-                Senha
-              </label>
+              <div className="mb-1.5 flex items-center justify-between gap-3">
+                <label htmlFor="password" className="block text-sm font-semibold text-foreground">Senha</label>
+                <Link href="/forgot-password" className="text-xs font-semibold text-primary hover:underline">
+                  Esqueci minha senha
+                </Link>
+              </div>
               <input
                 id="password"
                 name="password"
                 type="password"
                 required
                 autoComplete="current-password"
-                className="w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 transition-colors"
-                placeholder="••••••••"
+                className="w-full rounded-lg border border-border bg-card px-3.5 py-2.5 text-sm text-foreground shadow-sm outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/20"
+                placeholder="Digite sua senha"
               />
             </div>
 
-            <button
-              type="submit"
-              className="w-full flex justify-center items-center gap-2 rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition-all duration-200 shadow-lg shadow-primary/30"
-            >
-              Entrar no Sistema
-            </button>
+            <SubmitButton />
           </form>
-        </div>
 
-        <p className="text-center text-xs text-muted-foreground mt-6">
-          Sistema exclusivo Garça Branca · Acesso restrito
-        </p>
-      </div>
-    </div>
-  )
+          <div className="mt-7 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-2">
+              <ShieldCheck className="h-4 w-4 text-primary" aria-hidden="true" />
+              Ambiente seguro e acesso restrito
+            </span>
+            <span aria-hidden="true">•</span>
+            <Link href="/privacy" className="font-medium text-primary hover:underline">
+              Política de Privacidade
+            </Link>
+          </div>
+        </div>
+      </section>
+    </main>
+  );
 }
 
 export default function LoginPage() {
   return (
     <Suspense fallback={
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+      <div className="flex min-h-dvh items-center justify-center bg-background">
+        <Loader2 className="h-7 w-7 animate-spin text-primary" aria-label="Carregando" />
       </div>
     }>
       <LoginForm />
     </Suspense>
-  )
+  );
 }

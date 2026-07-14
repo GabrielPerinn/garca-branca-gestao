@@ -8,7 +8,7 @@ Para que a Vercel faça o deploy automático, seu código precisa estar no GitHu
 2. No seu terminal local:
    ```bash
    git add .
-   git commit -m "Preparando sistema para publicação (Etapa 10)"
+   git commit -m "chore: preparar deploy de staging"
    git branch -M main
    git remote add origin https://github.com/SEU_USUARIO/garca-branca-gestao.git
    git push -u origin main
@@ -33,11 +33,28 @@ Estas variáveis ficam visíveis no código fonte do navegador e **só devem con
 Estas chaves têm poder de destruir a fazenda ou gastar seu dinheiro. **Nunca** coloque `NEXT_PUBLIC_` na frente delas.
 - `SUPABASE_SERVICE_ROLE_KEY`: A chave mestra que ultrapassa o RLS.
 - `OPENAI_API_KEY`: A chave da OpenAI para o Cérebro IA.
-- `AI_PROVIDER`: Defina como `openai` na Vercel (se estiver `mock` ele usará dados falsos).
+- `WHATSAPP_VERIFY_TOKEN`: Token privado usado no handshake do webhook.
+- `WHATSAPP_APP_SECRET`: Segredo usado para validar a assinatura HMAC da Meta.
+- `WHATSAPP_ACCESS_TOKEN`: Token de envio de respostas do WhatsApp.
+- `WHATSAPP_PHONE_NUMBER_ID`: Identificador do número remetente configurado na Meta.
+- `WHATSAPP_ALLOWED_PHONES`: Allowlist opcional de remetentes autorizados.
+- `APP_BASE_URL`: URL HTTPS pública usada pelo health check e pelas integrações.
+
+No painel do Supabase, em **Authentication → URL Configuration**, configure a
+URL pública do aplicativo como Site URL e inclua
+`https://seu-dominio/auth/callback` nas Redirect URLs. Esse endereço é usado
+pelo fluxo seguro de recuperação de senha.
+- `AI_PROVIDER`: Use `openai` ou `mock`; com chave configurada, vazio usa OpenAI.
+- `OPENAI_MODEL`: Modelo de interpretação estruturada; padrão `gpt-5.6`.
 
 ## 4. Segurança e Validação Pós-Deploy
 Após o primeiro deploy terminar:
 1. Acesse a URL gerada (ex: `https://garca-branca.vercel.app`).
-2. Acesse a rota `/ai-test`.
-3. Certifique-se de que o sistema consegue gravar uma ocorrência falsa (teste a conexão com o Supabase de produção/staging).
-4. **Nota sobre Segurança**: Até a Etapa 11 (Autenticação), as páginas de Client não farão gravações porque o banco está selado por RLS. Apenas a IA (que roda no Server e usa a Service Role Key) conseguirá operar os dados.
+2. Entre com um usuário autenticado que possua um perfil ativo em `users_profiles`.
+3. Valide `/api/health`; o resultado saudável é HTTP 200 com
+   `checks.configuration.ok` e `checks.database.ok` iguais a `true`.
+4. Use `/ai-test` somente em staging: essa rota grava ocorrências ou ações pendentes.
+5. **Modelo de segurança atual**: páginas protegidas exigem sessão e perfil ativo;
+   Server Actions repetem autorização no servidor; RLS continua como camada do
+   banco. A service role é usada apenas em código de servidor e nunca substitui
+   essas verificações nas ações iniciadas pelo usuário.

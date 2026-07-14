@@ -1,17 +1,27 @@
 {
-  "name": "tmp-app",
-  "version": "0.1.0",
+  "name": "garca-branca-gestao",
+  "version": "0.2.0",
+  "description": "Plataforma de gestão rural com IA da Fazenda Garça Branca",
   "private": true,
+  "engines": {
+    "node": ">=20.9.0"
+  },
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbopack": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
+    "test": "tsx --test tests/*.test.ts",
+    "test:db": "supabase test db",
     "smoke:occurrences": "tsx scripts/smoke-occurrences.ts",
     "smoke:openai-text": "tsx scripts/smoke-openai-text.ts",
     "stress:openai-safety": "tsx scripts/stress-openai-safety.ts",
     "smoke:webhook": "tsx scripts/smoke-whatsapp-webhook.ts",
+    "backup:database": "bash scripts/database-backup.sh",
+    "backup:restore-drill": "bash scripts/database-restore-drill.sh",
+    "backup:decrypt": "bash scripts/database-decrypt-backup.sh",
     "deploy": "vercel --prod",
     "deploy:preview": "vercel"
   },
@@ -37,9 +47,12 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
-    "supabase": "^2.107.0",
+    "supabase": "^2.109.1",
     "tailwindcss": "^4",
     "tsx": "^4.22.4",
     "typescript": "^5"
+  },
+  "overrides": {
+    "postcss": "8.5.18"
   }
 }

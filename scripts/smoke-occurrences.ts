@@ -109,11 +109,26 @@ async function runTest() {
 
     console.log("PASS: audit_log criado");
     console.log("\n✅ Todos os testes passaram com sucesso!");
-    process.exit(0);
 
   } catch (error: any) {
     console.error("\nFAIL: " + error.message);
-    process.exit(1);
+    process.exitCode = 1;
+  } finally {
+    if (taskId) {
+      const { error } = await supabase.from('tasks').update({ status: 'deleted' }).eq('id', taskId);
+      if (error) {
+        console.error('WARN: não foi possível arquivar a tarefa do smoke: ' + error.message);
+        process.exitCode = 1;
+      }
+    }
+    if (occurrenceId) {
+      const { error } = await supabase.from('occurrences').update({ status: 'deleted' }).eq('id', occurrenceId);
+      if (error) {
+        console.error('WARN: não foi possível arquivar a ocorrência do smoke: ' + error.message);
+        process.exitCode = 1;
+      }
+    }
+    if (taskId || occurrenceId) console.log('CLEANUP: registros do smoke arquivados.');
   }
 }
 

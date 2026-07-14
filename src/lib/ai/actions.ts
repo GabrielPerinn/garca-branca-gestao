@@ -1,210 +1,115 @@
 'use server'
 
-import { createAdminClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { z } from 'zod'
+import { createServiceRoleClient, requirePermission } from '@/lib/supabase/server'
+import {
+  approvePendingActionInternal,
+  rejectPendingActionInternal,
+} from '@/lib/ai/action-executor'
 
-// Executa uma ação aprovada no banco de dados
-async function executeAction(supabase: any, actionType: string, payload: Record<string, any>): Promise<void> {
-  const today = new Date().toISOString().split('T')[0];
+const idSchema = z.string().uuid('Identificador de ação inválido.')
+const editablePlanSchema = z.string().min(2).max(50_000)
+const supportedEditableActions = new Set([
+  'create_expense', 'create_revenue', 'create_task', 'complete_task',
+  'cancel_task',
+  'create_cattle_lot', 'record_inventory_entry', 'record_cattle_sale',
+  'record_cattle_movement', 'record_weighing', 'record_employee_payment',
+  'create_livestock_protocol', 'complete_livestock_protocol',
+  'record_gravel_operation', 'record_suppression_operation',
+])
 
-  switch (actionType) {
+async function getAuthenticatedContext() {
+  const { profile } = await requirePermission('actions.approve')
+  const supabase = createServiceRoleClient({ actorProfileId: profile.id })
+  return { supabase, profileId: profile.id }
+}
 
-    case 'create_expense': {
-      const { error } = await supabase.from('expenses').insert({
-        amount: payload.amount ?? 0,
-        description: payload.description ?? 'Lançado via IA',
-        category: payload.category ?? 'IA',
-        expense_date: payload.expense_date ?? payload.date ?? today,
-        status: 'active',
-      });
-      if (error) throw new Error(`Erro ao criar despesa: ${error.message}`);
-      break;
-    }
-
-    case 'create_revenue': {
-      const { error } = await supabase.from('revenues').insert({
-        amount: payload.amount ?? 0,
-        description: payload.description ?? 'Receita via IA',
-        category: payload.category ?? 'IA',
-        revenue_date: payload.revenue_date ?? payload.date ?? today,
-        status: 'active',
-      });
-      if (error) throw new Error(`Erro ao criar receita: ${error.message}`);
-      break;
-    }
-
-    case 'create_task': {
-      const { error } = await supabase.from('tasks').insert({
-        title: payload.title ?? payload.description ?? 'Tarefa via IA',
-        description: payload.description ?? null,
-        priority: payload.priority ?? 'medium',
-        due_date: payload.due_date ?? payload.date ?? null,
-        status: 'pending',
-      });
-      if (error) throw new Error(`Erro ao criar tarefa: ${error.message}`);
-      break;
-    }
-
-    case 'record_cattle_sale': {
-      const { error } = await supabase.from('cattle_sales').insert({
-        buyer_name: payload.buyer_name ?? payload.buyer ?? 'Comprador via IA',
-        quantity: payload.quantity ?? 1,
-        gross_amount: payload.gross_amount ?? payload.amount ?? 0,
-        negotiation_date: payload.negotiation_date ?? payload.date ?? today,
-        shipment_date: payload.shipment_date ?? null,
-        payment_status: 'pending',
-        status: 'active',
-      });
-      if (error) throw new Error(`Erro ao registrar venda: ${error.message}`);
-      break;
-    }
-
-    case 'record_cattle_movement': {
-      const movType = payload.movement_type ?? 'transfer';
-      const qty = payload.quantity ?? 1;
-
-      // Insere o movimento
-      const { error: movError } = await supabase.from('cattle_movements').insert({
-        movement_type: movType,
-        quantity: qty,
-        movement_date: payload.movement_date ?? payload.date ?? today,
-        reason: payload.reason ?? null,
-        notes: payload.human_summary ?? null,
-        status: 'active',
-      });
-      if (movError) throw new Error(`Erro ao registrar movimento: ${movError.message}`);
-
-      // Se é compra, cria ou atualiza um lote
-      if (movType === 'purchase') {
-        const lotName = payload.lot_name ?? `${payload.animal_category ?? 'Gado'} — Compra ${new Date().toLocaleDateString('pt-BR')}`;
-        const { error: lotError } = await supabase.from('cattle_lots').insert({
-          name: lotName,
-          category: payload.animal_category ?? null,
-          current_quantity: qty,
-          origin: payload.origin ?? 'Compra via IA',
-          status: 'active',
-        });
-        if (lotError) throw new Error(`Erro ao criar lote: ${lotError.message}`);
-      }
-      break;
-    }
-
-    case 'record_weighing': {
-      const { error } = await supabase.from('weighings').insert({
-        weighing_date: payload.weighing_date ?? payload.date ?? today,
-        quantity_weighed: payload.quantity_weighed ?? null,
-        average_weight: payload.average_weight ?? null,
-        total_weight: payload.total_weight ?? (payload.average_weight && payload.quantity_weighed ? payload.average_weight * payload.quantity_weighed : null),
-        notes: payload.notes ?? 'Registrado via IA',
-      });
-      if (error) throw new Error(`Erro ao registrar pesagem: ${error.message}`);
-      break;
-    }
-
-    case 'record_employee_payment': {
-      // Tenta encontrar o funcionário pelo nome
-      let employeeId: string | null = null;
-      if (payload.employee_name) {
-        const { data: emp } = await supabase
-          .from('employees')
-          .select('id')
-          .ilike('full_name', `%${payload.employee_name}%`)
-          .limit(1)
-          .single();
-        employeeId = emp?.id ?? null;
-      }
-
-      const { error } = await supabase.from('employee_payments').insert({
-        employee_id: employeeId,
-        payment_type: payload.payment_type ?? 'salário',
-        amount: payload.amount ?? 0,
-        payment_date: payload.payment_date ?? payload.date ?? today,
-        description: payload.description ?? `${payload.payment_type ?? 'Pagamento'} via IA`,
-        status: 'active',
-      });
-      if (error) throw new Error(`Erro ao registrar pagamento: ${error.message}`);
-      break;
-    }
-
-    default:
-      throw new Error(`Intent '${actionType}' não tem executor implementado.`);
-  }
+function revalidatePendingActionPages() {
+  revalidatePath('/')
+  revalidatePath('/pending-actions')
+  revalidatePath('/finance')
+  revalidatePath('/tasks')
+  revalidatePath('/cattle')
+  revalidatePath('/sales')
+  revalidatePath('/weighings')
+  revalidatePath('/inventory')
+  revalidatePath('/inventory-movements')
+  revalidatePath('/employees')
+  revalidatePath('/contracts')
+  revalidatePath('/pastures')
+  revalidatePath('/gravel-operations')
+  revalidatePath('/suppression-operations')
+  revalidatePath('/herd-health')
+  revalidatePath('/alerts')
+  revalidatePath('/twin')
 }
 
 export async function approvePendingAction(actionId: string) {
-  const supabase = await createAdminClient();
-
-  // 1. Buscar a ação
-  const { data: action, error: fetchError } = await supabase
-    .from('pending_actions')
-    .select('*')
-    .eq('id', actionId)
-    .single();
-
-  if (fetchError || !action) throw new Error('Ação não encontrada.');
-  if (action.confirmation_status !== 'pending') throw new Error('Ação já processada.');
-
-  const payload = action.interpreted_data_json ?? {};
-
-  // 2. Executar ação primária
-  await executeAction(supabase, action.action_type, payload);
-
-  // 3. Executar ações secundárias (ex: compra de gado → despesa automática)
-  if (payload.secondary_actions && Array.isArray(payload.secondary_actions)) {
-    for (const secondary of payload.secondary_actions) {
-      try {
-        const secondaryPayload = typeof secondary.extracted_data === 'string'
-          ? JSON.parse(secondary.extracted_data)
-          : secondary.extracted_data;
-        await executeAction(supabase, secondary.intent, secondaryPayload);
-      } catch (err: any) {
-        console.error(`Erro na ação secundária ${secondary.intent}:`, err.message);
-        // Não falha a aprovação por ação secundária — só loga
-      }
-    }
-  }
-
-  // 4. Marcar como concluída
-  await supabase.from('pending_actions').update({
-    confirmation_status: 'completed',
-    updated_at: new Date().toISOString(),
-  }).eq('id', actionId);
-
-  // 5. Registrar no audit_log
-  await supabase.from('audit_logs').insert({
-    action: 'approve_pending_action',
-    table_name: 'pending_actions',
-    record_id: actionId,
-    new_values: { action_type: action.action_type, payload },
-  }).maybeSingle();
-
-  // 6. Revalidar todas as páginas afetadas
-  revalidatePath('/');
-  revalidatePath('/pending-actions');
-  revalidatePath('/finance');
-  revalidatePath('/tasks');
-  revalidatePath('/cattle');
-  revalidatePath('/sales');
-  revalidatePath('/employees');
-
-  return { success: true };
+  const id = idSchema.parse(actionId)
+  const { supabase, profileId } = await getAuthenticatedContext()
+  const result = await approvePendingActionInternal(supabase, id, {
+    actorProfileId: profileId,
+    reason: 'Approved from authenticated dashboard',
+  })
+  revalidatePendingActionPages()
+  return result
 }
 
 export async function rejectPendingAction(actionId: string) {
-  const supabase = await createAdminClient();
-  await supabase
+  const id = idSchema.parse(actionId)
+  const { supabase, profileId } = await getAuthenticatedContext()
+  const result = await rejectPendingActionInternal(supabase, id, {
+    actorProfileId: profileId,
+    reason: 'Rejected from authenticated dashboard',
+  })
+  revalidatePath('/pending-actions')
+  return result
+}
+
+function safePlanObject(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error('Plano inválido.')
+  return value as Record<string, unknown>
+}
+
+export async function updatePendingActionPlan(actionId: string, serializedPlan: string) {
+  const id = idSchema.parse(actionId)
+  const rawPlan = editablePlanSchema.parse(serializedPlan)
+  const plan = safePlanObject(JSON.parse(rawPlan))
+  const { supabase, profileId } = await getAuthenticatedContext()
+  const { data: current, error: currentError } = await supabase
     .from('pending_actions')
-    .update({ confirmation_status: 'discarded', updated_at: new Date().toISOString() })
-    .eq('id', actionId);
+    .select('action_type, confirmation_status, plan_version')
+    .eq('id', id)
+    .maybeSingle()
+  if (currentError) throw new Error(`Falha ao localizar o plano: ${currentError.message}`)
+  if (!current || current.confirmation_status !== 'pending') throw new Error('Este plano não está mais disponível para edição.')
+  if (!supportedEditableActions.has(current.action_type)) throw new Error('Este tipo de plano não pode ser editado por esta tela.')
 
-  // Registrar no audit_log
+  const secondary = Array.isArray(plan.secondary_actions) ? plan.secondary_actions : []
+  if (secondary.length > 10) throw new Error('O plano excede o limite de ações relacionadas.')
+  for (const rawAction of secondary) {
+    const action = safePlanObject(rawAction)
+    if (typeof action.intent !== 'string' || !supportedEditableActions.has(action.intent)) {
+      throw new Error('O plano contém uma ação relacionada não suportada.')
+    }
+    safePlanObject(action.extracted_data)
+  }
+
+  const { error: updateError } = await supabase.from('pending_actions').update({
+    interpreted_data_json: plan,
+    missing_fields_json: [],
+    plan_version: Number(current.plan_version || 1) + 1,
+  }).eq('id', id).eq('confirmation_status', 'pending')
+  if (updateError) throw new Error(`Não foi possível salvar o plano: ${updateError.message}`)
+
   await supabase.from('audit_logs').insert({
-    action: 'reject_pending_action',
     table_name: 'pending_actions',
-    record_id: actionId,
-    new_values: { reason: 'Rejected by user' },
-  }).maybeSingle();
-
-  revalidatePath('/pending-actions');
-  return { success: true };
+    record_id: id,
+    action: 'edit_pending_action_plan',
+    changed_by: profileId,
+    reason: 'Plano estruturado revisado antes da aprovação.',
+  })
+  revalidatePath('/pending-actions')
+  return { success: true }
 }
